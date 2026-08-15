@@ -93,6 +93,7 @@ jobs:
           path: |
             .cineorder_monitor_state.json
             .cineorder_announcement_proposals.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
