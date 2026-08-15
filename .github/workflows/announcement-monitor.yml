@@ -41,6 +41,50 @@ jobs:
       - name: Run Global Continuous Announcement Monitor
         run: npm run monitor:once
 
+      - name: Verify Persistent Monitor State
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
+            const statePath = path.resolve(workspace, ".cineorder_monitor_state.json");
+            const propPath = path.resolve(workspace, ".cineorder_announcement_proposals.json");
+
+            console.log("\nPersistence Verification");
+            console.log("------------------------");
+            console.log("Workspace: " + workspace);
+
+            if (!fs.existsSync(statePath)) {
+              console.error("❌ State file NOT found at: " + statePath);
+              process.exit(1);
+            }
+            const stateSize = fs.statSync(statePath).size;
+            let stateData;
+            try {
+              stateData = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+            } catch (err) {
+              console.error("❌ State file contains invalid JSON:", err);
+              process.exit(1);
+            }
+            console.log("\nState:\nEXISTS\nSize: " + stateSize + " bytes\nValid JSON: YES");
+
+            if (!fs.existsSync(propPath)) {
+              console.error("❌ Proposals file NOT found at: " + propPath);
+              process.exit(1);
+            }
+            const propSize = fs.statSync(propPath).size;
+            let propData;
+            try {
+              propData = JSON.parse(fs.readFileSync(propPath, "utf-8"));
+            } catch (err) {
+              console.error("❌ Proposals file contains invalid JSON:", err);
+              process.exit(1);
+            }
+            console.log("\nProposals:\nEXISTS\nSize: " + propSize + " bytes\nValid JSON: YES\nProposal count: " + (Array.isArray(propData) ? propData.length : 0));
+            console.log("\nEvent hashes:\n" + (stateData.eventHashes ? stateData.eventHashes.length : 0));
+            console.log("\nPERSISTENCE VERIFICATION: PASS\n");
+          '
+
       - name: Save Updated Monitor State & Proposals Cache
         if: always()
         uses: actions/cache/save@v4
@@ -51,13 +95,13 @@ jobs:
           key: cineorder-monitor-state-${{ github.run_id }}
 
       - name: Archive Monitor Telemetry & Staged Proposals
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cineorder-announcements-state
           path: |
             .cineorder_monitor_state.json
             .cineorder_announcement_proposals.json
+          if-no-files-found: error
           retention-days: 30
 
       - name: Verify Dataset & Release Gates

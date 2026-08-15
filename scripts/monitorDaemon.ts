@@ -21,9 +21,10 @@ import type {
   DiscoveryScanResult,
 } from '../src/types/announcementDiscovery';
 
-export const STATE_FILE_PATH = path.resolve(process.cwd(), '.cineorder_monitor_state.json');
-export const PROPOSALS_FILE_PATH = path.resolve(process.cwd(), '.cineorder_announcement_proposals.json');
-export const LOCK_FILE_PATH = path.resolve(process.cwd(), '.cineorder_monitor.lock');
+const WORKSPACE_ROOT = process.env.GITHUB_WORKSPACE || process.cwd();
+export const STATE_FILE_PATH = path.resolve(WORKSPACE_ROOT, '.cineorder_monitor_state.json');
+export const PROPOSALS_FILE_PATH = path.resolve(WORKSPACE_ROOT, '.cineorder_announcement_proposals.json');
+export const LOCK_FILE_PATH = path.resolve(WORKSPACE_ROOT, '.cineorder_monitor.lock');
 
 /**
  * Ensure persistence files exist on disk for artifact upload and caching
@@ -171,8 +172,10 @@ export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean
     console.log(`\n============================================================`);
     console.log(`📡 CINEORDER CONTINUOUS ANNOUNCEMENT MONITOR — RUNNING SCAN`);
     console.log(`============================================================`);
-    console.log(`Timestamp: ${new Date().toISOString()}`);
-    console.log(`State File: ${STATE_FILE_PATH}`);
+    console.log(`Timestamp:      ${new Date().toISOString()}`);
+    console.log(`Workspace Root: ${WORKSPACE_ROOT}`);
+    console.log(`State File:     ${STATE_FILE_PATH}`);
+    console.log(`Proposals File: ${PROPOSALS_FILE_PATH}`);
 
     const eventsToProcess: NormalizedSourceEvent[] = [...CURATED_MONITOR_EVENTS];
     const result = monitor.processEvents(eventsToProcess, { forceScan: options?.force });
@@ -182,6 +185,24 @@ export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean
 
     // Guarantee both files exist before completing
     ensurePersistenceFilesExist(monitor);
+
+    // Verify persistence integrity
+    if (!fs.existsSync(STATE_FILE_PATH)) {
+      throw new Error(`[Persistence Failure] State file was not created at ${STATE_FILE_PATH}`);
+    }
+    if (!fs.existsSync(PROPOSALS_FILE_PATH)) {
+      throw new Error(`[Persistence Failure] Proposals file was not created at ${PROPOSALS_FILE_PATH}`);
+    }
+    const stateSize = fs.statSync(STATE_FILE_PATH).size;
+    const proposalsSize = fs.statSync(PROPOSALS_FILE_PATH).size;
+    if (stateSize === 0) {
+      throw new Error(`[Persistence Failure] State file is 0 bytes at ${STATE_FILE_PATH}`);
+    }
+    if (proposalsSize === 0) {
+      throw new Error(`[Persistence Failure] Proposals file is 0 bytes at ${PROPOSALS_FILE_PATH}`);
+    }
+    JSON.parse(fs.readFileSync(STATE_FILE_PATH, 'utf-8'));
+    JSON.parse(fs.readFileSync(PROPOSALS_FILE_PATH, 'utf-8'));
 
     console.log(`\n--- SCAN RESULTS ---`);
     console.log(`Total Authoritative Events Discovered: ${result.totalAnnouncementsDiscovered}`);
@@ -211,7 +232,7 @@ export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean
       }
     }
 
-    console.log(`\n✅ Monitor scan complete. State safely saved to disk.\n`);
+    console.log(`\n✅ Monitor scan complete. State & proposals safely verified on disk.\n`);
     return result;
   } finally {
     isScanRunning = false;
