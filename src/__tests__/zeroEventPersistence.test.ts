@@ -14,12 +14,13 @@ import {
 } from '../lib/globalAnnouncementMonitor';
 import type { MonitorScanState } from '../types/announcementDiscovery';
 
-declare const require: any;
 declare const process: { exit: (code: number) => void };
 
-const fs = typeof require !== 'undefined' ? require('fs') : null;
-const path = typeof require !== 'undefined' ? require('path') : null;
-const os = typeof require !== 'undefined' ? require('os') : null;
+// Dynamic import for Node.js modules without requiring ambient @types/node in browser tsconfig
+const dynamicImport = new Function('specifier', 'return import(specifier)');
+const fs: any = await dynamicImport('node:fs');
+const path: any = await dynamicImport('node:path');
+const os: any = await dynamicImport('node:os');
 
 console.log('========================================================================');
 console.log('  CINEORDER ZERO-EVENT PERSISTENCE TEST SUITE                           ');
@@ -37,9 +38,9 @@ function assert(condition: boolean, message: string) {
 }
 
 // 1. Create a clean isolated temporary test directory
-const tempDir = fs && path && os ? fs.mkdtempSync(path.join(os.tmpdir(), 'cineorder-zero-event-test-')) : '';
-const testStatePath = path ? path.join(tempDir, '.cineorder_monitor_state.json') : '';
-const testProposalsPath = path ? path.join(tempDir, '.cineorder_announcement_proposals.json') : '';
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cineorder-zero-event-test-'));
+const testStatePath = path.join(tempDir, '.cineorder_monitor_state.json');
+const testProposalsPath = path.join(tempDir, '.cineorder_announcement_proposals.json');
 
 class TestDiskFsStorageAdapter implements MonitorStorageAdapter {
   private statePath: string;
@@ -50,7 +51,7 @@ class TestDiskFsStorageAdapter implements MonitorStorageAdapter {
 
   load(): MonitorScanState | null {
     try {
-      if (fs && fs.existsSync(this.statePath)) {
+      if (fs.existsSync(this.statePath)) {
         const raw = fs.readFileSync(this.statePath, 'utf-8');
         if (raw.trim().length > 0) {
           return JSON.parse(raw);
@@ -63,14 +64,11 @@ class TestDiskFsStorageAdapter implements MonitorStorageAdapter {
   }
 
   save(state: MonitorScanState): void {
-    if (fs) {
-      fs.writeFileSync(this.statePath, JSON.stringify(state, null, 2), 'utf-8');
-    }
+    fs.writeFileSync(this.statePath, JSON.stringify(state, null, 2), 'utf-8');
   }
 }
 
 function saveTestProposals(proposalsPath: string, proposals: any[] = []): void {
-  if (!fs) return;
   let existing: any[] = [];
   if (fs.existsSync(proposalsPath)) {
     try {
@@ -90,7 +88,6 @@ function saveTestProposals(proposalsPath: string, proposals: any[] = []): void {
 }
 
 function ensureTestFilesExist(statePath: string, proposalsPath: string): void {
-  if (!fs) return;
   if (!fs.existsSync(statePath)) {
     const defaultState: MonitorScanState = {
       lastScanAt: new Date().toISOString(),
@@ -117,10 +114,6 @@ function ensureTestFilesExist(statePath: string, proposalsPath: string): void {
 }
 
 try {
-  if (!fs || !path || !os) {
-    throw new Error('Node environment required for zeroEventPersistence test');
-  }
-
   // ========================================================================
   // TEST CASE 1: Pre-Scan File Guarantee
   // ========================================================================
@@ -196,9 +189,9 @@ try {
 } finally {
   // Cleanup test temporary files
   try {
-    if (fs && fs.existsSync(testStatePath)) fs.unlinkSync(testStatePath);
-    if (fs && fs.existsSync(testProposalsPath)) fs.unlinkSync(testProposalsPath);
-    if (fs && tempDir && fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+    if (fs.existsSync(testStatePath)) fs.unlinkSync(testStatePath);
+    if (fs.existsSync(testProposalsPath)) fs.unlinkSync(testProposalsPath);
+    if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
   } catch {
     // Ignore cleanup
   }
