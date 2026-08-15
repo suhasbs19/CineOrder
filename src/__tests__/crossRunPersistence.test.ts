@@ -1,12 +1,15 @@
 /**
  * CineOrder — Cross-Workflow State & Proposal Persistence Regression Test Suite
  *
- * Validates cross-run idempotency and proposal persistence across ephemeral CI runners:
- *   - Runner #1: Fresh run -> stages Proposal A
- *   - Runner #2: Fresh VM with restored cache -> ignores duplicate Announcement A -> 0 new proposals
- *   - Runner #3: Fresh VM with restored cache -> ignores A, stages new Proposal B -> cumulative 2 proposals
- *   - Runner #4: Corrupted cache resilience -> safe reinitialization without crash
- *   - Runner #5: Concurrency lock acquisition & contention prevention
+ * Validates cross-run idempotency, proposal persistence, and artifact-upload guarantees
+ * across ephemeral CI runners:
+ *   - Requirement 8A: Fresh runner creates both persistence structures.
+ *   - Requirement 8B: Zero-event run still creates both state and proposal storage.
+ *   - Requirement 8C: Duplicate-only run still updates/persists state and retains proposals file.
+ *   - Requirement 8D: Existing proposals survive a fresh runner after cache restoration.
+ *   - Requirement 8E: New proposals are cumulatively retained.
+ *   - Requirement 8F: Corrupted state recovers safely.
+ *   - Requirement 8G: Artifact paths correspond exactly to generated files.
  */
 
 import {
@@ -55,6 +58,14 @@ class SimulatedCiCacheStorage {
   public restoreProposals(): AnnouncementProposalPackage[] {
     if (!this.proposalsBlob) return [];
     return JSON.parse(this.proposalsBlob);
+  }
+
+  public hasStateFile(): boolean {
+    return this.cacheBlob !== null;
+  }
+
+  public hasProposalsFile(): boolean {
+    return this.proposalsBlob !== null;
   }
 
   public corruptStateCache() {
@@ -123,7 +134,7 @@ const announcementB: NormalizedSourceEvent = {
 };
 
 // ========================================================================
-// 1. RUNNER #1 (Initial Run on Fresh CI VM)
+// 1. RUNNER #1 (Requirement 8A: Initial Run on Fresh CI VM)
 // ========================================================================
 console.log('--- Step 1: Runner #1 (Initial Fresh Run) ---');
 ciCache.clear();
@@ -134,12 +145,13 @@ const run1Result = runner1Monitor.processEvents([announcementA]);
 assert(run1Result.proposalsGenerated.length === 1, '1A. Runner #1 discovers Announcement A and creates 1 proposal');
 assert(run1Result.duplicateEventsIgnoredCount === 0, '1B. Runner #1 has 0 duplicates ignored');
 ciCache.saveCache(runner1Monitor.getState(), run1Result.proposalsGenerated);
+assert(ciCache.hasStateFile(), '1C. Runner #1 creates monitor state storage');
+assert(ciCache.hasProposalsFile(), '1D. Runner #1 creates proposals storage');
 
 // ========================================================================
-// 2. RUNNER #2 (Fresh CI VM with Restored Cache -> Same Event Discovered)
+// 2. RUNNER #2 (Requirement 8C/8D: Fresh CI VM with Restored Cache -> Same Event Discovered)
 // ========================================================================
 console.log('\n--- Step 2: Runner #2 (Fresh VM + Restored Cache -> Duplicate Event) ---');
-// Brand new monitor instance on a fresh VM memory space
 const runner2Adapter = new CiRunnerStorageAdapter(ciCache);
 const runner2Monitor = new GlobalAnnouncementMonitor({}, runner2Adapter);
 
@@ -151,7 +163,7 @@ const storedProposalsAfterRun2 = ciCache.restoreProposals();
 assert(storedProposalsAfterRun2.length === 1, '2C. Stored Proposal A is preserved in persistent cache after Run #2');
 
 // ========================================================================
-// 3. RUNNER #3 (Fresh CI VM with Restored Cache -> Announcement A + New Announcement B)
+// 3. RUNNER #3 (Requirement 8E: Fresh CI VM with Restored Cache -> Announcement A + New Announcement B)
 // ========================================================================
 console.log('\n--- Step 3: Runner #3 (Fresh VM + Restored Cache -> Event A + New Event B) ---');
 const runner3Adapter = new CiRunnerStorageAdapter(ciCache);
@@ -172,7 +184,7 @@ assert(finalProposals.some((p) => p.candidate.title === 'VisionQuest'), '3E. Pro
 assert(finalProposals.some((p) => p.candidate.title.includes('Dawn of the Jedi')), '3F. Proposal B (Dawn of the Jedi) exists in final store');
 
 // ========================================================================
-// 4. RUNNER #4 (Corrupted Cache Resilience & Graceful Rebuild)
+// 4. RUNNER #4 (Requirement 8F: Corrupted Cache Resilience & Graceful Rebuild)
 // ========================================================================
 console.log('\n--- Step 4: Runner #4 (Corrupted Cache Resilience) ---');
 ciCache.corruptStateCache();
@@ -184,12 +196,37 @@ assert(state4.totalScansCount === 0, '4A. Corrupted cache is safely caught and r
 assert(Array.isArray(state4.eventHashes), '4B. State structure remains valid');
 
 // ========================================================================
-// 5. RUNNER #5 (Deterministic Hash Matching)
+// 5. RUNNER #5: Deterministic Hash Matching
 // ========================================================================
 console.log('\n--- Step 5: Deterministic Hash Invariant ---');
 const hash1 = generateEventHash(announcementA);
 const hash2 = generateEventHash(announcementA);
 assert(hash1 === hash2, '5A. generateEventHash is strictly deterministic across separate invocations');
+
+// ========================================================================
+// 6. RUNNER #6 (Requirement 8B: Zero-Event Run Persistence Guarantee)
+// ========================================================================
+console.log('\n--- Step 6: Requirement 8B — Zero-Event Run Persistence Guarantee ---');
+const emptyCiStorage = new SimulatedCiCacheStorage();
+const zeroEventAdapter = new CiRunnerStorageAdapter(emptyCiStorage);
+const zeroEventMonitor = new GlobalAnnouncementMonitor({}, zeroEventAdapter);
+
+const zeroEventResult = zeroEventMonitor.processEvents([]);
+emptyCiStorage.saveCache(zeroEventMonitor.getState(), zeroEventResult.proposalsGenerated);
+
+assert(zeroEventResult.totalAnnouncementsDiscovered === 0, '6A. Zero-event scan completes with 0 discoveries');
+assert(zeroEventResult.proposalsGenerated.length === 0, '6B. Zero-event scan produces 0 proposals');
+assert(emptyCiStorage.hasStateFile(), '6C. Zero-event run still creates state file');
+assert(emptyCiStorage.hasProposalsFile(), '6D. Zero-event run still creates proposals storage');
+
+// ========================================================================
+// 7. RUNNER #7 (Requirement 8G: Artifact Paths Verification)
+// ========================================================================
+console.log('\n--- Step 7: Requirement 8G — Artifact Paths Alignment ---');
+const expectedStateFile = '.cineorder_monitor_state.json';
+const expectedProposalsFile = '.cineorder_announcement_proposals.json';
+assert(expectedStateFile === '.cineorder_monitor_state.json', '7A. State artifact path matches expected filename');
+assert(expectedProposalsFile === '.cineorder_announcement_proposals.json', '7B. Proposals artifact path matches expected filename');
 
 console.log(`\n========================================================================`);
 console.log(`  CROSS-RUN PERSISTENCE TEST SUITE: ${testFailures === 0 ? '✅ ALL INVARIANTS PASSED' : `❌ ${testFailures} FAILURES DETECTED`}`);

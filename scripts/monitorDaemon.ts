@@ -21,9 +21,42 @@ import type {
   DiscoveryScanResult,
 } from '../src/types/announcementDiscovery';
 
-const STATE_FILE_PATH = path.resolve(process.cwd(), '.cineorder_monitor_state.json');
-const PROPOSALS_FILE_PATH = path.resolve(process.cwd(), '.cineorder_announcement_proposals.json');
-const LOCK_FILE_PATH = path.resolve(process.cwd(), '.cineorder_monitor.lock');
+export const STATE_FILE_PATH = path.resolve(process.cwd(), '.cineorder_monitor_state.json');
+export const PROPOSALS_FILE_PATH = path.resolve(process.cwd(), '.cineorder_announcement_proposals.json');
+export const LOCK_FILE_PATH = path.resolve(process.cwd(), '.cineorder_monitor.lock');
+
+/**
+ * Ensure persistence files exist on disk for artifact upload and caching
+ */
+export function ensurePersistenceFilesExist(monitor?: GlobalAnnouncementMonitor): void {
+  try {
+    if (!fs.existsSync(STATE_FILE_PATH)) {
+      const defaultState = monitor ? monitor.getState() : {
+        lastScanAt: new Date().toISOString(),
+        lastSuccessfulScanAt: new Date().toISOString(),
+        totalScansCount: 0,
+        scanDurationMs: 0,
+        sourcesCheckedCount: 0,
+        sourcesFailedCount: 0,
+        duplicateEventsIgnoredCount: 0,
+        processedEventIds: [],
+        eventHashes: [],
+        sourceCooldowns: {},
+        failedSources: [],
+        discoveredTitlesCount: 0,
+        proposalsCreatedCount: 0,
+        rejectedRumorsCount: 0,
+        conflictsDetectedCount: 0,
+      };
+      fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(defaultState, null, 2), 'utf-8');
+    }
+    if (!fs.existsSync(PROPOSALS_FILE_PATH)) {
+      fs.writeFileSync(PROPOSALS_FILE_PATH, JSON.stringify([], null, 2), 'utf-8');
+    }
+  } catch (err) {
+    console.error('[MonitorDaemon] Error ensuring persistence files:', err);
+  }
+}
 
 /**
  * Concurrency Lock Management
@@ -110,7 +143,7 @@ export function saveProposalsToDisk(proposals: any[]): void {
       }
     }
     const existingIds = new Set(existing.map((p) => p.id));
-    const newlyAdded = proposals.filter((p) => !existingIds.has(p.id));
+    const newlyAdded = (proposals || []).filter((p) => !existingIds.has(p.id));
     const combined = [...existing, ...newlyAdded];
     fs.writeFileSync(PROPOSALS_FILE_PATH, JSON.stringify(combined, null, 2), 'utf-8');
   } catch (err) {
@@ -144,9 +177,11 @@ export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean
     const eventsToProcess: NormalizedSourceEvent[] = [...CURATED_MONITOR_EVENTS];
     const result = monitor.processEvents(eventsToProcess, { forceScan: options?.force });
 
-    if (result.proposalsGenerated.length > 0) {
-      saveProposalsToDisk(result.proposalsGenerated);
-    }
+    // Always persist proposals (creates file if empty, or merges new items)
+    saveProposalsToDisk(result.proposalsGenerated);
+
+    // Guarantee both files exist before completing
+    ensurePersistenceFilesExist(monitor);
 
     console.log(`\n--- SCAN RESULTS ---`);
     console.log(`Total Authoritative Events Discovered: ${result.totalAnnouncementsDiscovered}`);
