@@ -41,12 +41,14 @@ jobs:
       - name: Run Global Continuous Announcement Monitor
         run: npm run monitor:once
 
-      - name: Verify monitor persistence
+      - name: Verify Persistent Monitor State
         shell: bash
         run: |
           echo "=== PERSISTENCE VERIFICATION ==="
           echo "PWD=$(pwd)"
           echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+
+          ls -la "$GITHUB_WORKSPACE"
 
           STATE="$GITHUB_WORKSPACE/.cineorder_monitor_state.json"
           PROPOSALS="$GITHUB_WORKSPACE/.cineorder_announcement_proposals.json"
@@ -78,7 +80,6 @@ jobs:
           echo "PERSISTENCE VERIFICATION: PASS"
 
       - name: Save Updated Monitor State & Proposals Cache
-        if: always()
         uses: actions/cache/save@v4
         with:
           path: |

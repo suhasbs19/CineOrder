@@ -198,14 +198,13 @@ export function runMonitoringScan(options?: {
     console.log(`\n============================================================`);
     console.log(`MONITOR RUNTIME`);
     console.log(`---------------`);
+    console.log(`STORAGE ADAPTER: NodeFsStorageAdapter`);
     console.log(`process.cwd():                ${process.cwd()}`);
     console.log(`process.env.GITHUB_WORKSPACE: ${process.env.GITHUB_WORKSPACE || '(not set)'}`);
     console.log(`platform:                     ${process.platform}`);
     console.log(`runtime:                      Node.js ${process.version}`);
-    console.log(`storage adapter selected:     NodeFsStorageAdapter`);
-    console.log(`state path:                   ${STATE_FILE_PATH}`);
-    console.log(`proposal path:                ${PROPOSALS_FILE_PATH}`);
-    console.log(`\nSTORAGE ADAPTER: NodeFsStorageAdapter`);
+    console.log(`STATE PATH:                   ${STATE_FILE_PATH}`);
+    console.log(`PROPOSAL PATH:                ${PROPOSALS_FILE_PATH}`);
     console.log(`============================================================\n`);
 
     // 2. Guarantee files physically exist BEFORE scanning
