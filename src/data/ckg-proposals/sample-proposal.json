@@ -1,0 +1,39 @@
+{
+  "id": "prop-mcu-doomsday-2026",
+  "franchiseId": "marvel-cinematic-universe",
+  "title": "Avengers: Doomsday (AI Synopsis Enrichment Proposal)",
+  "createdAt": "2026-08-01T22:30:00Z",
+  "proposedEdges": [
+    {
+      "id": "edge-prop-1",
+      "sourceId": "mcu-spiderman-no-way-home",
+      "targetId": "mcu-doomsday",
+      "relationship": "multiverse",
+      "strength": "strong",
+      "confidence": "likely",
+      "reason": "Multiverse incursions and Doctor Strange spell consequences directly lead into Doctor Doom threat.",
+      "sourceType": "official-synopsis",
+      "sourceText": "Official SDCC announcement panel: Doctor Doom takes advantage of multiversal ruptures triggered during previous incursions.",
+      "citation": "Marvel Studios Hall H Panel 2024",
+      "confidenceScore": 0.88,
+      "proposedAt": "2026-08-01T22:30:00Z",
+      "status": "pending"
+    }
+  ],
+  "proposedEntities": [
+    {
+      "id": "villain-doctor-doom",
+      "name": "Victor von Doom (Doctor Doom)",
+      "type": "villain",
+      "description": "Ruler of Latveria and master of science and sorcery in the Multiverse Saga.",
+      "sourceText": "Marvel Official Cast Release",
+      "citation": "Marvel.com Press Announcement",
+      "proposedAt": "2026-08-01T22:30:00Z",
+      "status": "pending"
+    }
+  ],
+  "metadata": {
+    "generatedBy": "CineOrder Offline Enrichment Pipeline v3.0",
+    "sourceDocument": "MCU Phase 6 Official Press Briefing"
+  }
+}

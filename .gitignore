@@ -1,0 +1,18 @@
+node_modules
+dist
+.env
+.env.*
+.env.local
+.env.*.local
+*.log
+.DS_Store
+
+# CineOrder Monitor Local State & Lock Files
+.cineorder_monitor_state.json
+.cineorder_announcement_proposals.json
+.cineorder_monitor.lock
+
+# Certificates & Private Keys
+*.key
+*.pem
+!.env.example

@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-08-14T18:23:02.355Z",
+  "lastChecked": "2026-08-14",
+  "metadata": {
+    "generatedAt": "2026-08-14T18:23:02.355Z",
+    "knowledgeGraphVersion": "3.4",
+    "traversalVersion": "2.1",
+    "policyVersion": "6.2",
+    "comparisonEngineVersion": "1.0",
+    "gitCommit": "local-dev",
+    "durationMs": 24,
+    "formattedDuration": "24ms"
+  },
+  "effectiveness": {
+    "totalOverrides": 0,
+    "activeOverrides": 0,
+    "redundantOverrides": 0,
+    "effectiveness": 0
+  },
+  "stability": {
+    "previousActiveCount": 0,
+    "currentActiveCount": 0,
+    "activeDelta": 0,
+    "newlyRedundant": 0,
+    "newlyNecessary": 0
+  },
+  "overrides": {}
+}
