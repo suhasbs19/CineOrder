@@ -41,49 +41,41 @@ jobs:
       - name: Run Global Continuous Announcement Monitor
         run: npm run monitor:once
 
-      - name: Verify Persistent Monitor State
+      - name: Verify monitor persistence
+        shell: bash
         run: |
-          node -e '
-            const fs = require("fs");
-            const path = require("path");
-            const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
-            const statePath = path.resolve(workspace, ".cineorder_monitor_state.json");
-            const propPath = path.resolve(workspace, ".cineorder_announcement_proposals.json");
+          echo "=== PERSISTENCE VERIFICATION ==="
+          echo "PWD=$(pwd)"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
 
-            console.log("\nPersistence Verification");
-            console.log("------------------------");
-            console.log("Workspace: " + workspace);
+          STATE="$GITHUB_WORKSPACE/.cineorder_monitor_state.json"
+          PROPOSALS="$GITHUB_WORKSPACE/.cineorder_announcement_proposals.json"
 
-            if (!fs.existsSync(statePath)) {
-              console.error("❌ State file NOT found at: " + statePath);
-              process.exit(1);
-            }
-            const stateSize = fs.statSync(statePath).size;
-            let stateData;
-            try {
-              stateData = JSON.parse(fs.readFileSync(statePath, "utf-8"));
-            } catch (err) {
-              console.error("❌ State file contains invalid JSON:", err);
-              process.exit(1);
-            }
-            console.log("\nState:\nEXISTS\nSize: " + stateSize + " bytes\nValid JSON: YES");
+          echo "STATE=$STATE"
+          echo "PROPOSALS=$PROPOSALS"
 
-            if (!fs.existsSync(propPath)) {
-              console.error("❌ Proposals file NOT found at: " + propPath);
-              process.exit(1);
-            }
-            const propSize = fs.statSync(propPath).size;
-            let propData;
-            try {
-              propData = JSON.parse(fs.readFileSync(propPath, "utf-8"));
-            } catch (err) {
-              console.error("❌ Proposals file contains invalid JSON:", err);
-              process.exit(1);
-            }
-            console.log("\nProposals:\nEXISTS\nSize: " + propSize + " bytes\nValid JSON: YES\nProposal count: " + (Array.isArray(propData) ? propData.length : 0));
-            console.log("\nEvent hashes:\n" + (stateData.eventHashes ? stateData.eventHashes.length : 0));
-            console.log("\nPERSISTENCE VERIFICATION: PASS\n");
-          '
+          if [ ! -f "$STATE" ]; then
+            echo "ERROR: STATE FILE DOES NOT EXIST"
+            find "$GITHUB_WORKSPACE" -maxdepth 3 -name "*cineorder*" -print
+            exit 1
+          fi
+
+          if [ ! -f "$PROPOSALS" ]; then
+            echo "ERROR: PROPOSAL FILE DOES NOT EXIST"
+            find "$GITHUB_WORKSPACE" -maxdepth 3 -name "*cineorder*" -print
+            exit 1
+          fi
+
+          test -s "$STATE"
+          test -s "$PROPOSALS"
+
+          node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$STATE"
+          node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$PROPOSALS"
+
+          echo "STATE FILE: EXISTS"
+          echo "PROPOSAL FILE: EXISTS"
+          echo "JSON VALIDATION: PASS"
+          echo "PERSISTENCE VERIFICATION: PASS"
 
       - name: Save Updated Monitor State & Proposals Cache
         if: always()

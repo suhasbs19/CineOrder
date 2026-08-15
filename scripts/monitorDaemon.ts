@@ -21,34 +21,42 @@ import type {
   DiscoveryScanResult,
 } from '../src/types/announcementDiscovery';
 
-const WORKSPACE_ROOT = process.env.GITHUB_WORKSPACE || process.cwd();
-export const STATE_FILE_PATH = path.resolve(WORKSPACE_ROOT, '.cineorder_monitor_state.json');
-export const PROPOSALS_FILE_PATH = path.resolve(WORKSPACE_ROOT, '.cineorder_announcement_proposals.json');
-export const LOCK_FILE_PATH = path.resolve(WORKSPACE_ROOT, '.cineorder_monitor.lock');
+const WORKSPACE_ROOT = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd());
+export const STATE_FILE_PATH = path.join(WORKSPACE_ROOT, '.cineorder_monitor_state.json');
+export const PROPOSALS_FILE_PATH = path.join(WORKSPACE_ROOT, '.cineorder_announcement_proposals.json');
+export const LOCK_FILE_PATH = path.join(WORKSPACE_ROOT, '.cineorder_monitor.lock');
 
 /**
- * Ensure persistence files exist on disk for artifact upload and caching
+ * Generates a valid clean initial monitor state
+ */
+export function createDefaultMonitorState(): MonitorScanState {
+  const now = new Date().toISOString();
+  return {
+    lastScanAt: now,
+    lastSuccessfulScanAt: now,
+    totalScansCount: 0,
+    scanDurationMs: 0,
+    sourcesCheckedCount: 0,
+    sourcesFailedCount: 0,
+    duplicateEventsIgnoredCount: 0,
+    processedEventIds: [],
+    eventHashes: [],
+    sourceCooldowns: {},
+    failedSources: [],
+    discoveredTitlesCount: 0,
+    proposalsCreatedCount: 0,
+    rejectedRumorsCount: 0,
+    conflictsDetectedCount: 0,
+  };
+}
+
+/**
+ * Ensure persistence files exist on disk for artifact upload and caching BEFORE and AFTER scan
  */
 export function ensurePersistenceFilesExist(monitor?: GlobalAnnouncementMonitor): void {
   try {
     if (!fs.existsSync(STATE_FILE_PATH)) {
-      const defaultState = monitor ? monitor.getState() : {
-        lastScanAt: new Date().toISOString(),
-        lastSuccessfulScanAt: new Date().toISOString(),
-        totalScansCount: 0,
-        scanDurationMs: 0,
-        sourcesCheckedCount: 0,
-        sourcesFailedCount: 0,
-        duplicateEventsIgnoredCount: 0,
-        processedEventIds: [],
-        eventHashes: [],
-        sourceCooldowns: {},
-        failedSources: [],
-        discoveredTitlesCount: 0,
-        proposalsCreatedCount: 0,
-        rejectedRumorsCount: 0,
-        conflictsDetectedCount: 0,
-      };
+      const defaultState = monitor ? monitor.getState() : createDefaultMonitorState();
       fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(defaultState, null, 2), 'utf-8');
     }
     if (!fs.existsSync(PROPOSALS_FILE_PATH)) {
@@ -56,6 +64,7 @@ export function ensurePersistenceFilesExist(monitor?: GlobalAnnouncementMonitor)
     }
   } catch (err) {
     console.error('[MonitorDaemon] Error ensuring persistence files:', err);
+    throw err;
   }
 }
 
@@ -95,7 +104,7 @@ export function releaseLock(): void {
     if (fs.existsSync(LOCK_FILE_PATH)) {
       fs.unlinkSync(LOCK_FILE_PATH);
     }
-  } catch (err) {
+  } catch {
     // Ignore cleanup error
   }
 }
@@ -113,7 +122,9 @@ export class NodeFsStorageAdapter implements MonitorStorageAdapter {
     try {
       if (fs.existsSync(STATE_FILE_PATH)) {
         const raw = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
-        return JSON.parse(raw);
+        if (raw.trim().length > 0) {
+          return JSON.parse(raw);
+        }
       }
     } catch (err) {
       console.warn('[MonitorDaemon] Corrupted monitor state file detected on disk. Safely reinitializing clean state:', err);
@@ -126,6 +137,7 @@ export class NodeFsStorageAdapter implements MonitorStorageAdapter {
       fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(state, null, 2), 'utf-8');
     } catch (err) {
       console.error('[MonitorDaemon] Error saving persistent state to disk:', err);
+      throw err;
     }
   }
 }
@@ -133,13 +145,20 @@ export class NodeFsStorageAdapter implements MonitorStorageAdapter {
 /**
  * Persist generated proposals to disk for editorial review
  */
-export function saveProposalsToDisk(proposals: any[]): void {
+export function saveProposalsToDisk(proposals: any[] = []): void {
   try {
     let existing: any[] = [];
     if (fs.existsSync(PROPOSALS_FILE_PATH)) {
       try {
-        existing = JSON.parse(fs.readFileSync(PROPOSALS_FILE_PATH, 'utf-8'));
-      } catch {
+        const raw = fs.readFileSync(PROPOSALS_FILE_PATH, 'utf-8');
+        if (raw.trim().length > 0) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            existing = parsed;
+          }
+        }
+      } catch (err) {
+        console.warn('[MonitorDaemon] Corrupted proposals file on disk. Resetting proposals list:', err);
         existing = [];
       }
     }
@@ -149,12 +168,17 @@ export function saveProposalsToDisk(proposals: any[]): void {
     fs.writeFileSync(PROPOSALS_FILE_PATH, JSON.stringify(combined, null, 2), 'utf-8');
   } catch (err) {
     console.error('[MonitorDaemon] Error persisting proposals to disk:', err);
+    throw err;
   }
 }
 
 let isScanRunning = false;
 
-export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean }): DiscoveryScanResult | null {
+export function runMonitoringScan(options?: {
+  verbose?: boolean;
+  force?: boolean;
+  overrideEvents?: NormalizedSourceEvent[];
+}): DiscoveryScanResult | null {
   if (isScanRunning) {
     console.warn('[MonitorDaemon] Scan is already running in current process. Skipping overlapping execution.');
     return null;
@@ -165,44 +189,35 @@ export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean
   }
 
   isScanRunning = true;
+  let monitor: GlobalAnnouncementMonitor | null = null;
+  let result: DiscoveryScanResult | null = null;
+  const adapter = new NodeFsStorageAdapter();
+
   try {
-    const adapter = new NodeFsStorageAdapter();
-    const monitor = new GlobalAnnouncementMonitor({}, adapter);
-
+    // 1. Explicit Runtime Diagnostics Logging
     console.log(`\n============================================================`);
-    console.log(`📡 CINEORDER CONTINUOUS ANNOUNCEMENT MONITOR — RUNNING SCAN`);
-    console.log(`============================================================`);
-    console.log(`Timestamp:      ${new Date().toISOString()}`);
-    console.log(`Workspace Root: ${WORKSPACE_ROOT}`);
-    console.log(`State File:     ${STATE_FILE_PATH}`);
-    console.log(`Proposals File: ${PROPOSALS_FILE_PATH}`);
+    console.log(`MONITOR RUNTIME`);
+    console.log(`---------------`);
+    console.log(`process.cwd():                ${process.cwd()}`);
+    console.log(`process.env.GITHUB_WORKSPACE: ${process.env.GITHUB_WORKSPACE || '(not set)'}`);
+    console.log(`platform:                     ${process.platform}`);
+    console.log(`runtime:                      Node.js ${process.version}`);
+    console.log(`storage adapter selected:     NodeFsStorageAdapter`);
+    console.log(`state path:                   ${STATE_FILE_PATH}`);
+    console.log(`proposal path:                ${PROPOSALS_FILE_PATH}`);
+    console.log(`\nSTORAGE ADAPTER: NodeFsStorageAdapter`);
+    console.log(`============================================================\n`);
 
-    const eventsToProcess: NormalizedSourceEvent[] = [...CURATED_MONITOR_EVENTS];
-    const result = monitor.processEvents(eventsToProcess, { forceScan: options?.force });
+    // 2. Guarantee files physically exist BEFORE scanning
+    ensurePersistenceFilesExist();
 
-    // Always persist proposals (creates file if empty, or merges new items)
+    monitor = new GlobalAnnouncementMonitor({}, adapter);
+
+    const eventsToProcess: NormalizedSourceEvent[] = options?.overrideEvents ?? [...CURATED_MONITOR_EVENTS];
+    result = monitor.processEvents(eventsToProcess, { forceScan: options?.force });
+
+    // 3. Persist proposals immediately
     saveProposalsToDisk(result.proposalsGenerated);
-
-    // Guarantee both files exist before completing
-    ensurePersistenceFilesExist(monitor);
-
-    // Verify persistence integrity
-    if (!fs.existsSync(STATE_FILE_PATH)) {
-      throw new Error(`[Persistence Failure] State file was not created at ${STATE_FILE_PATH}`);
-    }
-    if (!fs.existsSync(PROPOSALS_FILE_PATH)) {
-      throw new Error(`[Persistence Failure] Proposals file was not created at ${PROPOSALS_FILE_PATH}`);
-    }
-    const stateSize = fs.statSync(STATE_FILE_PATH).size;
-    const proposalsSize = fs.statSync(PROPOSALS_FILE_PATH).size;
-    if (stateSize === 0) {
-      throw new Error(`[Persistence Failure] State file is 0 bytes at ${STATE_FILE_PATH}`);
-    }
-    if (proposalsSize === 0) {
-      throw new Error(`[Persistence Failure] Proposals file is 0 bytes at ${PROPOSALS_FILE_PATH}`);
-    }
-    JSON.parse(fs.readFileSync(STATE_FILE_PATH, 'utf-8'));
-    JSON.parse(fs.readFileSync(PROPOSALS_FILE_PATH, 'utf-8'));
 
     console.log(`\n--- SCAN RESULTS ---`);
     console.log(`Total Authoritative Events Discovered: ${result.totalAnnouncementsDiscovered}`);
@@ -232,16 +247,55 @@ export function runMonitoringScan(options?: { verbose?: boolean; force?: boolean
       }
     }
 
-    console.log(`\n✅ Monitor scan complete. State & proposals safely verified on disk.\n`);
     return result;
   } finally {
-    isScanRunning = false;
-    releaseLock();
+    try {
+      // 4. Finally-safe persistence guarantee
+      if (monitor) {
+        adapter.save(monitor.getState());
+      }
+      ensurePersistenceFilesExist(monitor ?? undefined);
+      saveProposalsToDisk(result?.proposalsGenerated ?? []);
+
+      // 5. Strict Physical File Verification
+      if (!fs.existsSync(STATE_FILE_PATH)) {
+        throw new Error(`[Persistence Failure] State file not found on disk at: ${STATE_FILE_PATH}`);
+      }
+      if (!fs.existsSync(PROPOSALS_FILE_PATH)) {
+        throw new Error(`[Persistence Failure] Proposals file not found on disk at: ${PROPOSALS_FILE_PATH}`);
+      }
+
+      const stateSize = fs.statSync(STATE_FILE_PATH).size;
+      const propSize = fs.statSync(PROPOSALS_FILE_PATH).size;
+
+      if (stateSize === 0) {
+        throw new Error(`[Persistence Failure] State file is empty (0 bytes) at ${STATE_FILE_PATH}`);
+      }
+      if (propSize === 0) {
+        throw new Error(`[Persistence Failure] Proposals file is empty (0 bytes) at ${PROPOSALS_FILE_PATH}`);
+      }
+
+      JSON.parse(fs.readFileSync(STATE_FILE_PATH, 'utf-8'));
+      JSON.parse(fs.readFileSync(PROPOSALS_FILE_PATH, 'utf-8'));
+
+      console.log(`\nSTATE FILE: EXISTS (${stateSize} bytes)`);
+      console.log(`PROPOSAL FILE: EXISTS (${propSize} bytes)`);
+      console.log(`JSON VALIDATION: PASS`);
+      console.log(`PERSISTENCE VERIFICATION: PASS`);
+      console.log(`✅ Monitor scan complete. State & proposals safely verified on disk.\n`);
+    } catch (persistErr) {
+      console.error('[MonitorDaemon] Fatal persistence failure during scan finalization:', persistErr);
+      releaseLock();
+      process.exit(1);
+    } finally {
+      isScanRunning = false;
+      releaseLock();
+    }
   }
 }
 
 // CLI Execution Entry Point
-async function main() {
+export async function main() {
   const args = process.argv.slice(2);
   const isOnce = args.includes('--once') || args.length === 0;
   const isDaemon = args.includes('--daemon');
@@ -295,7 +349,18 @@ async function main() {
   }
 }
 
-if (process.argv[1] && process.argv[1].includes('monitorDaemon')) {
+// Check if running directly as a script
+const isDirectScriptExecution =
+  typeof process !== 'undefined' &&
+  Boolean(
+    process.argv &&
+    process.argv.length > 1 &&
+    (process.argv[1].endsWith('monitorDaemon.ts') ||
+     process.argv[1].endsWith('monitorDaemon.js') ||
+     process.argv[1].includes('monitorDaemon'))
+  );
+
+if (isDirectScriptExecution) {
   main().catch((err) => {
     console.error('[MonitorDaemon] Fatal error:', err);
     releaseLock();
