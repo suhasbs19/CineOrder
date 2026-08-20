@@ -110,9 +110,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithGoogle: async () => {
     set({ loading: true });
     try {
+      const redirectUrl = typeof window !== 'undefined' && window.location?.origin
+        ? `${window.location.origin}/auth/callback`
+        : 'https://cineorder.vercel.app/auth/callback';
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
       });
       if (error) throw error;
     } finally {
