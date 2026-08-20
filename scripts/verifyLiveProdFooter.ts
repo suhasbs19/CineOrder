@@ -17,8 +17,11 @@ async function testProdFooter() {
       if (!footer) return null;
       const text = footer.textContent || '';
       const links = Array.from(footer.querySelectorAll('a')).map((a) => a.textContent?.trim());
+      const brandElement = footer.querySelector('.space-y-2');
+      const isBrandVisibleOnMobile = brandElement ? window.getComputedStyle(brandElement).display !== 'none' : false;
       return {
         height: Math.round(footer.getBoundingClientRect().height),
+        isBrandVisibleOnMobile,
         hasDev: text.includes('Developer Diagnostics'),
         hasCompany: text.includes('Company'),
         hasAbout: text.includes('About'),

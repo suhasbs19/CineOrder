@@ -315,7 +315,7 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
   const filteredTabItems = currentTabItems;
 
   const handleToggleWatched = (cId: string) => {
-    toggleWatched('guest-user', cId);
+    toggleWatched(cId);
   };
 
   const categoryBannerConfig: Record<CategoryType, { title: string; description: string; style: string; icon: React.ReactNode }> = {
@@ -820,7 +820,10 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
                               <Button
                                 variant={rec.isWatched ? 'secondary' : 'outline'}
                                 size="sm"
-                                onClick={() => handleToggleWatched(c.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleWatched(c.id);
+                                }}
                                 className={cn(
                                   'text-xs gap-1.5 py-1 px-2.5 cursor-pointer',
                                   rec.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
@@ -1050,7 +1053,10 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
                             'h-6 text-[10px] px-2.5 py-0 cursor-pointer',
                             watched && 'bg-green-500/20 text-green-400 border border-green-500/30'
                           )}
-                          onClick={() => handleToggleWatched(rec.content.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleWatched(rec.content.id);
+                          }}
                         >
                           <CheckCircle className="w-3 h-3 mr-1" />
                           {watched ? 'Watched' : 'Mark Watched'}

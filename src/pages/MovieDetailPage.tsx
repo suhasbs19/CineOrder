@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import {
   Star, ChevronLeft, ChevronRight, Play,
-  Heart, Eye, Share2, Film,
+  Heart, Eye, CheckCircle, Share2, Film,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -181,8 +181,8 @@ export default function MovieDetailPage() {
                 ) : (
                   <Button
                     variant={isWatched(content.id) ? 'secondary' : 'outline'}
-                    leftIcon={<Eye className="w-4 h-4" />}
-                    onClick={() => toggleWatched('guest', content.id)}
+                    leftIcon={isWatched(content.id) ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Eye className="w-4 h-4" />}
+                    onClick={() => toggleWatched(content.id)}
                     className={isWatched(content.id) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : ''}
                   >
                     {isWatched(content.id) ? 'Watched' : 'Mark Watched'}

@@ -415,7 +415,10 @@ export function StoryGraphNodeHierarchy({
                                     <Button
                                       variant={node.isWatched ? 'secondary' : 'outline'}
                                       size="sm"
-                                      onClick={() => onToggleWatched(c.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleWatched(c.id);
+                                      }}
                                       className={cn(
                                         'text-[10px] sm:text-xs py-0.5 sm:py-1 px-2 sm:px-2.5 h-6 sm:h-7 gap-1 cursor-pointer',
                                         node.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'

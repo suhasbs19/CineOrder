@@ -349,7 +349,7 @@ export default function FranchisePage() {
           <InteractiveTimeline
             orders={filteredOrders}
             watchedIds={watchedSet}
-            onToggleWatched={user ? (id) => toggleWatched(user.id, id) : undefined}
+            onToggleWatched={(id) => toggleWatched(id)}
           />
         ) : (
           /* List View */
@@ -372,12 +372,12 @@ export default function FranchisePage() {
                   index={index}
                   isWatched={order.content ? isWatched(order.content_id) : false}
                   onToggleWatched={() => {
-                    if (user && order.content) {
-                      toggleWatched(user.id, order.content_id);
+                    if (order.content) {
+                      toggleWatched(order.content_id);
                     }
                   }}
                   onViewDetails={() => navigate(`/movie/${order.content_id}`)}
-                  isLoggedIn={!!user}
+                  isLoggedIn={true}
                   spoilerFree={spoilerFreeMode && !isWatched(order.content_id)}
                 />
               ))
