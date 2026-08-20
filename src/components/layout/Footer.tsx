@@ -5,25 +5,25 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-card/50 border-t border-white/5 mt-8 sm:mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8">
-          {/* Brand */}
-          <div className="space-y-1.5 md:col-span-1">
+    <footer className="bg-card/50 border-t border-white/5 mt-6 sm:mt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+          {/* Brand (Desktop / Tablet only — omitted on mobile for maximum vertical density) */}
+          <div className="hidden md:block space-y-2 md:col-span-1">
             <Link to="/" className="inline-flex items-center gap-2">
-              <div className="w-6 h-6 sm:w-7 sm:h-7 bg-primary rounded-md flex items-center justify-center">
-                <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+              <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
+                <Film className="w-4 h-4 text-white" />
               </div>
-              <span className="text-base sm:text-lg font-bold">
+              <span className="text-lg font-bold">
                 Cine<span className="text-primary">Order</span>
               </span>
             </Link>
-            <p className="text-[11px] sm:text-xs text-muted leading-relaxed max-w-sm">
+            <p className="text-xs text-muted leading-relaxed max-w-sm">
               Find the perfect watch order for every movie franchise. Never watch out of order again.
             </p>
           </div>
 
-          {/* Navigation Links (2 columns on mobile & desktop) */}
+          {/* Navigation Links (Compact 2-column grid spanning full width on mobile) */}
           <div className="grid grid-cols-2 gap-4 sm:gap-8 md:col-span-2">
             {/* Popular Franchises */}
             <div>
@@ -54,7 +54,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Attribution */}
-        <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-center sm:text-left">
+        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-1 text-center sm:text-left">
           <p className="text-[11px] sm:text-xs text-muted">
             © {currentYear} CineOrder. Made with{' '}
             <Heart className="w-2.5 h-2.5 sm:w-3 sm:h-3 inline text-primary fill-primary" />{' '}
