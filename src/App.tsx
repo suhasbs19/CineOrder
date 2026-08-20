@@ -21,6 +21,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage'));
 const UserSearchPage = lazy(() => import('@/pages/UserSearchPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const AuthCallbackPage = lazy(() => import('@/pages/AuthCallbackPage'));
 const DevDiagnosticsPage = lazy(() => import('@/pages/DevDiagnosticsPage'));
 const CkgProposalReviewPage = lazy(() => import('@/pages/CkgProposalReviewPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -68,6 +69,7 @@ export default function App() {
               <Route path="/dashboard" element={<PageTransition><PlannerPage /></PageTransition>} />
               <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
               <Route path="/signup" element={<PageTransition><SignupPage /></PageTransition>} />
+              <Route path="/auth/callback" element={<PageTransition><AuthCallbackPage /></PageTransition>} />
               <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
               <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
               <Route path="/profile/:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
