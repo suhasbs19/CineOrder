@@ -539,7 +539,7 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
         )}
 
         {/* Curated Editorial Narrative Journey Header */}
-        <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-surface/60 to-surface/60 border border-amber-500/20 flex flex-col gap-1 text-xs">
+        <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-surface/60 to-surface/60 border border-amber-500/20 flex flex-col gap-1 text-xs">
           <div className="flex items-center gap-2 text-amber-400 font-bold uppercase tracking-wider text-xs">
             {isOfficialOverride ? (
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -556,7 +556,7 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
                 : 'Narrative Story Guide'}
             </span>
           </div>
-          <p className="text-slate-300 text-xs leading-relaxed">
+          <p className="text-slate-300 text-[11px] sm:text-xs leading-normal sm:leading-relaxed">
             {isOfficialOverride
               ? `Officially published preparation guide directly from ${guideData.officialSource?.sourcePublisher}. CineOrder strictly adheres to official studio authority.`
               : isUpcoming
@@ -568,61 +568,61 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
         </div>
 
         {/* Completion Progress Breakdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
-            <span className="text-[10px] text-muted font-bold uppercase">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5 sm:gap-3">
+          <div className="p-2 sm:p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between min-w-0">
+            <span className="text-[9px] sm:text-[10px] text-muted font-bold uppercase truncate">
               {isOfficialOverride
                 ? 'Official Readiness'
                 : isUpcoming
-                ? 'Story Preparation Readiness'
+                ? 'Preparation'
                 : isTheatrical
                 ? 'Catch-Up Readiness'
                 : 'Viewing Readiness'}
             </span>
-            <span className="text-xl font-black text-gradient mt-1">{graphResult.storyReadinessPercentage}%</span>
+            <span className="text-sm sm:text-xl font-black text-gradient mt-0.5 sm:mt-1">{graphResult.storyReadinessPercentage}%</span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
-            <span className="text-[10px] text-muted font-bold uppercase">
+          <div className="p-2 sm:p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between min-w-0">
+            <span className="text-[9px] sm:text-[10px] text-muted font-bold uppercase truncate">
               {isOfficialOverride ? 'Official Prereqs' : 'Must Watch'}
             </span>
-            <span className="text-xl font-black text-red-400 mt-1">
-              {remainingCritical} <span className="text-xs font-normal text-muted">Left • {graphResult.mustWatch.length} Total</span>
+            <span className="text-sm sm:text-xl font-black text-red-400 mt-0.5 sm:mt-1 truncate">
+              {remainingCritical} <span className="text-[10px] sm:text-xs font-normal text-muted">Left • {graphResult.mustWatch.length} Total</span>
             </span>
           </div>
 
           {isUpcoming ? (
-            <div className="p-3.5 rounded-xl bg-surface/50 border border-amber-500/20 col-span-1 sm:col-span-2 flex flex-col justify-between">
-              <span className="text-[10px] text-amber-400 font-bold uppercase flex items-center gap-1">
-                <span>Additional Recommended Viewing</span>
+            <div className="p-2 sm:p-3.5 rounded-xl bg-surface/50 border border-amber-500/20 col-span-2 md:col-span-2 flex flex-col justify-between min-w-0">
+              <span className="text-[9px] sm:text-[10px] text-amber-400 font-bold uppercase flex items-center gap-1 truncate">
+                <span>Recommended Viewing</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-normal">Pre-Release</span>
               </span>
-              <span className="text-xl font-black text-amber-400 mt-1">
-                {remainingRecommended + remainingOptional} <span className="text-xs font-normal text-muted">Left • {graphResult.recommended.length + graphResult.optional.length} Total</span>
+              <span className="text-sm sm:text-xl font-black text-amber-400 mt-0.5 sm:mt-1">
+                {remainingRecommended + remainingOptional} <span className="text-[10px] sm:text-xs font-normal text-muted">Left • {graphResult.recommended.length + graphResult.optional.length} Total</span>
               </span>
             </div>
           ) : (
             <>
-              <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
-                <span className="text-[10px] text-muted font-bold uppercase">Recommended</span>
-                <span className="text-xl font-black text-amber-400 mt-1">
-                  {remainingRecommended} <span className="text-xs font-normal text-muted">Left • {graphResult.recommended.length} Total</span>
+              <div className="p-2 sm:p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between min-w-0">
+                <span className="text-[9px] sm:text-[10px] text-muted font-bold uppercase truncate">Recommended</span>
+                <span className="text-sm sm:text-xl font-black text-amber-400 mt-0.5 sm:mt-1 truncate">
+                  {remainingRecommended} <span className="text-[10px] sm:text-xs font-normal text-muted">Left • {graphResult.recommended.length} Total</span>
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
-                <span className="text-[10px] text-muted font-bold uppercase">Extra Context</span>
-                <span className="text-xl font-black text-blue-400 mt-1">
-                  {remainingOptional} <span className="text-xs font-normal text-muted">Left • {graphResult.optional.length} Total</span>
+              <div className="p-2 sm:p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between min-w-0">
+                <span className="text-[9px] sm:text-[10px] text-muted font-bold uppercase truncate">Extra Context</span>
+                <span className="text-sm sm:text-xl font-black text-blue-400 mt-0.5 sm:mt-1 truncate">
+                  {remainingOptional} <span className="text-[10px] sm:text-xs font-normal text-muted">Left • {graphResult.optional.length} Total</span>
                 </span>
               </div>
             </>
           )}
 
-          <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
-            <span className="text-[10px] text-muted font-bold uppercase">Est. Watch Time</span>
-            <div className="mt-1 flex flex-col">
-              <span className="text-xl font-black text-white">{graphResult.formattedWatchTime}</span>
+          <div className="p-2 sm:p-3.5 rounded-xl bg-surface/50 border border-white/5 col-span-2 md:col-span-1 flex flex-col justify-between min-w-0">
+            <span className="text-[9px] sm:text-[10px] text-muted font-bold uppercase truncate">Est. Watch Time</span>
+            <div className="mt-0.5 sm:mt-1 flex items-baseline sm:flex-col gap-1.5 sm:gap-0">
+              <span className="text-sm sm:text-xl font-black text-white">{graphResult.formattedWatchTime}</span>
               <span className="text-[10px] font-normal text-muted">{graphResult.totalPrerequisitesCount} {graphResult.totalPrerequisitesCount === 1 ? 'title' : 'titles'} total</span>
             </div>
           </div>

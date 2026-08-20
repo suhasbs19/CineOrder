@@ -133,7 +133,7 @@ export default function MovieDetailPage() {
                 </button>
               )}
 
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white drop-shadow-2xl mb-3 tracking-tight">
+              <h1 className="text-2xl sm:text-5xl lg:text-7xl font-black text-white drop-shadow-2xl mb-3 tracking-tight">
                 {content.title}
               </h1>
 
@@ -201,10 +201,10 @@ export default function MovieDetailPage() {
       </section>
 
       {/* ─── Details ───────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             {/* Preparation Guide */}
             <PreparationGuide contentId={content.id} />
 

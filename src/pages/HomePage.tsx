@@ -44,21 +44,21 @@ export default function HomePage() {
       </Helmet>
 
       {/* ─── 1. Hero Section ────────────────────────────────────── */}
-      <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24">
+      <section className="relative overflow-hidden pt-8 pb-10 sm:pt-20 sm:pb-24">
         {/* Background glow effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-primary/15 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-1/3 left-1/3 w-[300px] h-[200px] bg-accent-blue/10 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="relative max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 text-center">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-xs sm:text-sm text-muted-light mb-6"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full glass-card text-xs sm:text-sm text-muted-light mb-4 sm:mb-6"
           >
-            <Film className="w-4 h-4 text-primary" />
-            <span>Story Knowledge Graph & Traversal Engine</span>
+            <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+            <span className="truncate max-w-[260px] sm:max-w-none">Story Knowledge Graph & Traversal Engine</span>
           </motion.div>
 
           {/* Heading */}
@@ -66,7 +66,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight max-w-4xl mx-auto leading-[1.1]"
+            className="text-3xl sm:text-6xl lg:text-7xl font-black tracking-tight max-w-4xl mx-auto leading-[1.15]"
           >
             Find the Perfect{' '}
             <span className="text-gradient">Watch Order</span>{' '}
@@ -78,7 +78,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-6 text-lg sm:text-xl text-muted-light max-w-2xl mx-auto font-normal leading-relaxed"
+            className="mt-4 sm:mt-6 text-sm sm:text-xl text-muted-light max-w-2xl mx-auto font-normal leading-relaxed"
           >
             Chronological timelines, release orders, and story prerequisite recommendations.
             Never wonder what to watch next.
@@ -90,20 +90,20 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-8 max-w-xl mx-auto"
+            className="mt-6 sm:mt-8 max-w-xl mx-auto"
           >
             <div className="relative flex items-center">
-              <Search className="absolute left-4 w-5 h-5 text-muted pointer-events-none" />
+              <Search className="absolute left-3.5 sm:left-4 w-4 h-4 sm:w-5 sm:h-5 text-muted pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search Marvel, Star Wars, Batman..."
-                className="w-full pl-12 pr-28 py-4 bg-surface/80 backdrop-blur-md border border-white/10 rounded-2xl text-white placeholder-muted focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-xl"
+                className="w-full pl-10 sm:pl-12 pr-24 sm:pr-28 py-3 sm:py-4 bg-surface/80 backdrop-blur-md border border-white/10 rounded-2xl text-white placeholder-muted focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-sm sm:text-base shadow-xl"
               />
               <button
                 type="submit"
-                className="absolute right-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-medium rounded-xl text-sm transition-colors shadow-md"
+                className="absolute right-1.5 sm:right-2 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl text-xs sm:text-sm transition-colors shadow-md"
               >
                 Search
               </button>
@@ -439,42 +439,49 @@ function UpcomingHomeSection() {
   const upcomingItems = useMemo(() => getUpcomingTitles(items).slice(0, 4), [items]);
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div className="flex items-center justify-between mb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary" />
-            <h2 className="text-2xl font-bold text-white">Upcoming Releases</h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+    <section className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-3 sm:py-4">
+      <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
+        <div className="space-y-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+            <h2 className="text-xl sm:text-2xl font-bold text-white truncate">Upcoming Releases</h2>
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
               Live Countdowns
             </span>
           </div>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted truncate sm:whitespace-normal">
             Future movies and TV series across all supported CineOrder universes.
           </p>
         </div>
 
         <button
           onClick={() => navigate('/upcoming')}
-          className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover transition-colors"
+          className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-primary hover:text-primary-hover transition-colors flex-shrink-0"
         >
-          View All Upcoming <ChevronRight className="w-4 h-4" />
+          View All <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="aspect-[2/3] w-full rounded-xl bg-surface/50 animate-pulse border border-white/5" />
+            <div key={i} className="flex sm:flex-col gap-3 glass-dark p-3 sm:p-4 rounded-2xl border border-white/10">
+              <div className="w-[105px] sm:w-full aspect-[2/3] rounded-xl bg-surface/50 animate-pulse flex-shrink-0" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-4 w-3/4 bg-surface/50 rounded animate-pulse" />
+                <div className="h-3 w-1/2 bg-surface/50 rounded animate-pulse" />
+                <div className="h-7 w-full bg-surface/50 rounded animate-pulse mt-4" />
+              </div>
+            </div>
           ))}
         </div>
       ) : upcomingItems.length === 0 ? (
-        <div className="p-8 rounded-2xl glass-dark border border-white/10 text-center space-y-2">
+        <div className="p-6 sm:p-8 rounded-2xl glass-dark border border-white/10 text-center space-y-2">
           <p className="text-sm font-medium text-white">No upcoming releases right now.</p>
           <p className="text-xs text-muted">Check back soon for newly announced movies and TV series.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {upcomingItems.map((item) => (
             <UpcomingCard key={item.id} item={item} mode="upcoming" />
           ))}

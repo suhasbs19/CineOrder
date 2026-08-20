@@ -170,11 +170,11 @@ export default function FranchisePage() {
       </section>
 
       {/* ─── Total Watch Time Card ──────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 -mt-6 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card/90 backdrop-blur-xl rounded-2xl border border-white/10 p-5 flex flex-wrap items-center gap-6"
+          className="bg-card/90 backdrop-blur-xl rounded-2xl border border-white/10 p-4 sm:p-5 flex flex-wrap items-center gap-4 sm:gap-6"
         >
           {/* Total Runtime */}
           <div className="flex items-center gap-3 flex-1 min-w-[200px]">

@@ -268,26 +268,26 @@ export function StoryGraphNodeHierarchy({
     switch (category) {
       case 'must_watch':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
             Must Watch
           </span>
         );
       case 'recommended':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
             Recommended
           </span>
         );
       case 'optional':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40">
+          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40">
             Extra Context
           </span>
         );
       case 'post_credit':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40">
-            Post-Credit Context
+          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40">
+            Post-Credit
           </span>
         );
       default:
@@ -312,46 +312,46 @@ export function StoryGraphNodeHierarchy({
   };
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-4 sm:space-y-6 pt-1 sm:pt-2">
       {/* Header Info Banner */}
-      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+      <div className="p-3 sm:p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-white/10 pb-2.5 sm:pb-3">
           <div className="flex items-center gap-2">
-            <GitCommit className="w-5 h-5 text-primary" />
+            <GitCommit className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
                 Story Graph Node Hierarchy
               </h3>
-              <p className="text-xs text-muted">
+              <p className="text-[11px] sm:text-xs text-muted">
                 Directed narrative dependency paths & labeled edge rationale
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-[10px]">
-            <span className="px-2 py-1 rounded-md bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
-              🔴 Required Edge
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px]">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
+              🔴 Required
             </span>
-            <span className="px-2 py-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
-              🟠 Strong Edge
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+              🟠 Strong
             </span>
-            <span className="px-2 py-1 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
-              🔵 Moderate Edge
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+              🔵 Moderate
             </span>
           </div>
         </div>
 
         {/* Narrative Branches */}
-        <div className="space-y-8 pt-2">
+        <div className="space-y-4 sm:space-y-6 pt-1">
           {branches.map((branch) => (
-            <div key={branch.id} className="space-y-4 p-4 rounded-xl bg-surface/30 border border-white/5">
+            <div key={branch.id} className="space-y-2.5 sm:space-y-4 p-3 sm:p-4 rounded-xl bg-surface/30 border border-white/5">
               <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">
                 {branch.icon}
-                <span>{branch.title}</span>
-                <span className="text-muted text-[11px] font-mono">({branch.items.length} nodes)</span>
+                <span className="truncate">{branch.title}</span>
+                <span className="text-muted text-[10px] sm:text-[11px] font-mono flex-shrink-0">({branch.items.length} nodes)</span>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-2 sm:space-y-3">
                 {branch.items.map((node) => {
                   const c = node.content;
                   const edge = findCkgEdge(c.id, targetId);
@@ -359,92 +359,100 @@ export function StoryGraphNodeHierarchy({
                   const strengthInfo = formatEdgeStrength(edge?.strength);
 
                   return (
-                    <div key={c.id} className="space-y-3">
+                    <div key={c.id} className="space-y-2 sm:space-y-2.5">
                       {/* Node Card */}
-                      <div className="p-4 rounded-xl bg-surface/60 border border-white/10 hover:border-white/20 transition-all space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div
+                        data-testid="story-node-card"
+                        className="p-2.5 sm:p-4 rounded-xl bg-surface/60 border border-white/10 hover:border-white/20 transition-all shadow-md"
+                      >
+                        <div className="flex flex-row gap-3 sm:gap-4 items-start">
                           {/* Thumbnail */}
                           <div
                             onClick={() => onNavigate(`/movie/${c.id}`)}
-                            className="w-16 sm:w-20 aspect-[2/3] rounded-lg overflow-hidden border border-white/10 flex-shrink-0 cursor-pointer group"
+                            className="w-[84px] min-w-[84px] max-w-[84px] sm:w-20 sm:min-w-0 sm:max-w-none aspect-[2/3] rounded-lg overflow-hidden border border-white/10 flex-shrink-0 cursor-pointer group self-stretch sm:self-auto bg-surface/40"
                           >
                             <SafeImage
                               src={c.poster_url}
                               alt={c.title}
+                              aspectRatio="poster"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
                           </div>
 
                           {/* Info */}
-                          <div className="flex-1 space-y-2 w-full">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h4
-                                  onClick={() => onNavigate(`/movie/${c.id}`)}
-                                  className="text-sm font-bold text-white hover:text-primary transition-colors cursor-pointer"
-                                >
-                                  {c.title}
-                                </h4>
-                                <span className="text-xs text-muted">({formatYear(c.release_date)})</span>
-                                {getPriorityBadge(node.category)}
-                                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/40">
-                                  {getFranchiseBadgeLabel(c.franchise_id)}
-                                </span>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                  {node.dependencyType}
-                                </span>
+                          <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+                            <div className="space-y-1 sm:space-y-2">
+                              <div className="flex flex-wrap items-start justify-between gap-1.5 sm:gap-2">
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+                                  <h4
+                                    onClick={() => onNavigate(`/movie/${c.id}`)}
+                                    className="text-xs sm:text-sm font-bold text-white hover:text-primary transition-colors cursor-pointer line-clamp-2 leading-snug"
+                                  >
+                                    {c.title}
+                                  </h4>
+                                  <span className="text-[10px] sm:text-xs text-muted flex-shrink-0">({formatYear(c.release_date)})</span>
+                                  {getPriorityBadge(node.category)}
+                                  <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/40">
+                                    {getFranchiseBadgeLabel(c.franchise_id)}
+                                  </span>
+                                  <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                    {node.dependencyType}
+                                  </span>
+                                </div>
+
+                                <div className="flex-shrink-0">
+                                  {isTheatricallyUpcoming(c) ? (
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      disabled
+                                      className="text-[10px] sm:text-xs py-0.5 sm:py-1 px-2 sm:px-2.5 h-6 sm:h-7 opacity-60 cursor-not-allowed border border-white/10"
+                                      title="This title has not premiered yet and cannot be marked as watched."
+                                    >
+                                      Upcoming
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant={node.isWatched ? 'secondary' : 'outline'}
+                                      size="sm"
+                                      onClick={() => onToggleWatched(c.id)}
+                                      className={cn(
+                                        'text-[10px] sm:text-xs py-0.5 sm:py-1 px-2 sm:px-2.5 h-6 sm:h-7 gap-1 cursor-pointer',
+                                        node.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                      )}
+                                    >
+                                      <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                      {node.isWatched ? 'Watched' : 'Mark Watched'}
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
 
-                              {isTheatricallyUpcoming(c) ? (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  disabled
-                                  className="text-xs py-1 px-2.5 opacity-60 cursor-not-allowed border border-white/10"
-                                  title="This title has not premiered yet and cannot be marked as watched."
-                                >
-                                  Not Yet Released
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant={node.isWatched ? 'secondary' : 'outline'}
-                                  size="sm"
-                                  onClick={() => onToggleWatched(c.id)}
-                                  className={cn(
-                                    'text-xs py-1 px-2.5 gap-1',
-                                    node.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                  )}
-                                >
-                                  <CheckCircle className="w-3.5 h-3.5" />
-                                  {node.isWatched ? 'Watched' : 'Mark Watched'}
-                                </Button>
-                              )}
+                              <p className="text-[11px] sm:text-xs text-muted-light leading-tight sm:leading-relaxed line-clamp-2 sm:line-clamp-3">
+                                <span className="text-white font-semibold">Narrative Role:</span> {node.shortReason || node.reason}
+                              </p>
                             </div>
-
-                            <p className="text-xs text-muted-light leading-relaxed">
-                              <span className="text-white font-semibold">Narrative Role:</span> {node.shortReason || node.reason}
-                            </p>
                           </div>
                         </div>
                       </div>
 
                       {/* Labeled Graph Edge Connection to Target */}
-                      <div className="flex items-center justify-center py-1">
+                      <div data-testid="story-connection-bar" className="flex items-center justify-center py-0.5 sm:py-1">
                         <div
                           onClick={() => showEdgeTooltip(c.id, c.title, targetTitle, node.shortReason || node.reason)}
-                          className="group relative cursor-pointer px-3 py-1.5 rounded-full bg-black/60 border border-white/20 hover:border-primary/60 transition-all flex items-center gap-2 shadow-lg"
+                          className="group relative cursor-pointer px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/60 border border-white/20 hover:border-primary/60 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg max-w-full"
                         >
-                          <ArrowDown className="w-3.5 h-3.5 text-primary group-hover:translate-y-0.5 transition-transform" />
-                          <span className="text-[11px] font-bold text-cyan-300">
+                          <ArrowDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary group-hover:translate-y-0.5 transition-transform flex-shrink-0" />
+                          <span className="text-[10px] sm:text-[11px] font-bold text-cyan-300 truncate">
                             {relLabel}
                           </span>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black border bg-indigo-500/20 text-indigo-300 border-indigo-500/30">
+                          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[8px] sm:text-[9px] font-black border bg-indigo-500/20 text-indigo-300 border-indigo-500/30 flex-shrink-0">
                             {edge?.narrativeScope === 'post-credit' ? 'Post-Credit' : 'Main Feature'}
                           </span>
-                          <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black border', strengthInfo.style)}>
+                          <span className={cn('px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[8px] sm:text-[9px] font-black border flex-shrink-0', strengthInfo.style)}>
                             {strengthInfo.label}
                           </span>
-                          <HelpCircle className="w-3 h-3 text-muted group-hover:text-white transition-colors" />
+                          <HelpCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-muted group-hover:text-white transition-colors flex-shrink-0" />
                         </div>
                       </div>
                     </div>

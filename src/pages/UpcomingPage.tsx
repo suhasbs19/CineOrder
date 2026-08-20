@@ -82,16 +82,16 @@ export default function UpcomingPage() {
         />
       </Helmet>
 
-      <div className="min-h-screen pt-24 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
           {/* Header */}
-          <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs sm:text-sm font-medium"
             >
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Official Release Tracker</span>
             </motion.div>
 
@@ -99,7 +99,7 @@ export default function UpcomingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-4xl sm:text-5xl font-black text-white tracking-tight"
+              className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight"
             >
               Upcoming & <span className="text-gradient">Recent Releases</span>
             </motion.h1>
@@ -108,7 +108,7 @@ export default function UpcomingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-muted-light text-base sm:text-lg"
+              className="text-muted-light text-xs sm:text-base lg:text-lg"
             >
               Live countdowns to future chapters and fresh titles available now.
             </motion.p>
@@ -172,7 +172,7 @@ export default function UpcomingPage() {
           </div>
 
           {/* Controls & Filters */}
-          <div className="glass-dark p-6 rounded-2xl border border-white/10 space-y-6">
+          <div className="glass-dark p-3.5 sm:p-6 rounded-2xl border border-white/10 space-y-3 sm:space-y-6">
             {/* Search Bar & Type Selectors */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               {/* Search input */}
@@ -260,12 +260,15 @@ export default function UpcomingPage() {
 
           {/* Grid Loading Skeletons */}
           {loading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-[2/3] w-full rounded-xl" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
+                <div key={i} className="flex sm:flex-col gap-3 glass-dark p-3 sm:p-4 rounded-2xl border border-white/10">
+                  <Skeleton className="w-[105px] sm:w-full aspect-[2/3] rounded-xl flex-shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-7 w-full mt-4" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -273,9 +276,9 @@ export default function UpcomingPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="p-6 rounded-xl bg-accent-red/10 border border-accent-red/30 text-accent-red flex items-center gap-3">
+            <div className="p-4 sm:p-6 rounded-xl bg-accent-red/10 border border-accent-red/30 text-accent-red flex items-center gap-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span>{error}</span>
+              <span className="text-xs sm:text-sm">{error}</span>
             </div>
           )}
 
@@ -283,12 +286,12 @@ export default function UpcomingPage() {
           {!loading && !error && (
             <>
               {filteredItems.length === 0 ? (
-                <div className="text-center py-16 space-y-4 glass-dark rounded-2xl border border-white/10 p-8">
-                  <div className="w-16 h-16 rounded-full bg-surface border border-white/10 flex items-center justify-center mx-auto text-muted">
-                    <Calendar className="w-8 h-8" />
+                <div className="text-center py-12 sm:py-16 space-y-3 sm:space-y-4 glass-dark rounded-2xl border border-white/10 p-6 sm:p-8">
+                  <div className="w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-surface border border-white/10 flex items-center justify-center mx-auto text-muted">
+                    <Calendar className="w-6 sm:w-8 h-6 sm:h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-white">No Releases Found</h3>
-                  <p className="text-muted text-sm max-w-md mx-auto">
+                  <h3 className="text-lg sm:text-xl font-bold text-white">No Releases Found</h3>
+                  <p className="text-muted text-xs sm:text-sm max-w-md mx-auto">
                     {activeMainTab === 'upcoming'
                       ? 'No upcoming releases right now. Check back soon for newly announced movies and TV series.'
                       : 'No releases match your current search or filter criteria.'}
@@ -305,7 +308,7 @@ export default function UpcomingPage() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between text-xs text-muted">
                     <span>
                       Showing {filteredItems.length}{' '}
@@ -316,7 +319,7 @@ export default function UpcomingPage() {
                         : 'total tracked'}{' '}
                       titles
                     </span>
-                    <span>
+                    <span className="hidden sm:inline">
                       {activeMainTab === 'upcoming'
                         ? 'Sorted by nearest release'
                         : activeMainTab === 'recently_released'
@@ -325,7 +328,7 @@ export default function UpcomingPage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                     {filteredItems.map((item) => (
                       <UpcomingCard
                         key={item.id}
