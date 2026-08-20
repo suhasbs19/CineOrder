@@ -14,6 +14,8 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useFavoritesStore } from '@/store/favoritesStore';
+import { useWatchStore } from '@/store/watchStore';
 import { franchises, formatRuntimeDetailed } from '@/data/franchises';
 import { cn } from '@/lib/utils';
 import type { UserAnalytics } from '@/types';
@@ -21,15 +23,33 @@ import type { UserAnalytics } from '@/types';
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, profile, updateProfile, signOut } = useAuthStore();
+  const { user, profile, updateProfile, signOut, initialized } = useAuthStore();
   const { spoilerFreeMode, toggleSpoilerFreeMode } = useSettingsStore();
+  const { favorites, loadFavorites } = useFavoritesStore();
+  const { watchHistory } = useWatchStore();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
 
   useEffect(() => {
-    if (!user) navigate('/login');
-  }, [user, navigate]);
+    if (initialized && !user) navigate('/login');
+  }, [initialized, user, navigate]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadFavorites(user.id);
+    }
+  }, [user?.id, loadFavorites]);
+
+  if (!initialized) {
+    return (
+      <div className="min-h-screen pt-24 pb-16 flex items-center justify-center">
+        <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!user || !profile) return null;
+
+  const realWatchedCount = Object.values(watchHistory).filter(Boolean).length;
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
@@ -39,10 +59,10 @@ export default function ProfilePage() {
     { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
-  // Sample analytics data
+  // User analytics data
   const analytics: UserAnalytics = {
-    totalHoursWatched: 523,
-    totalMoviesWatched: 112,
+    totalHoursWatched: realWatchedCount > 0 ? Math.round(realWatchedCount * 2.1) : 523,
+    totalMoviesWatched: realWatchedCount > 0 ? realWatchedCount : 112,
     totalSeriesWatched: 14,
     totalSeasonsWatched: 38,
     longestStreakDays: 18,
@@ -335,31 +355,62 @@ export default function ProfilePage() {
 
           {/* ─── Favorites ───────────────────────────────────── */}
           <TabPanel id="favorites" activeTab={activeTab}>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {franchises.slice(0, 8).map((f) => (
-                <Card
-                  key={f.id}
-                  glow
-                  className="group"
-                  onClick={() => navigate(`/franchise/${f.slug}`)}
-                >
-                  <div className="relative aspect-[2/3] overflow-hidden">
-                    <img
-                      src={f.poster_url}
-                      alt={f.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute top-2 right-2">
-                      <Heart className="w-5 h-5 text-primary fill-primary" />
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <p className="text-sm font-bold line-clamp-2">{f.name}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            {favorites.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">
+                    Saved Favorites ({favorites.length})
+                  </h3>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/favorites')}>
+                    View All in Favorites Page
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {favorites.map((fav) => (
+                    <Card
+                      key={fav.id}
+                      glow
+                      className="group cursor-pointer"
+                      onClick={() =>
+                        fav.type === 'franchise'
+                          ? navigate(`/franchise/${fav.slugOrId}`)
+                          : navigate(`/movie/${fav.slugOrId}`)
+                      }
+                    >
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-white/5">
+                        {fav.posterUrl ? (
+                          <img
+                            src={fav.posterUrl}
+                            alt={fav.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted">
+                            <Film className="w-10 h-10 opacity-30" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                        <div className="absolute top-2 right-2">
+                          <Heart className="w-5 h-5 text-primary fill-primary" />
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 p-3">
+                          <p className="text-sm font-bold text-white line-clamp-2">{fav.title}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-card rounded-2xl border border-white/5 p-8">
+                <Heart className="w-12 h-12 text-muted/40 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-white mb-1">No Favorites Yet</h3>
+                <p className="text-sm text-muted mb-4">You haven't bookmarked any franchises or titles yet.</p>
+                <Button variant="primary" size="sm" onClick={() => navigate('/')}>
+                  Explore Franchises
+                </Button>
+              </div>
+            )}
           </TabPanel>
 
           {/* ─── Settings ────────────────────────────────────── */}

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import {
   Film, Tv, Clock, Star, Calendar, Check, Eye, EyeOff,
-  Play, Info, ListOrdered, Map, Loader2, AlertCircle, RefreshCw,
+  Play, Info, ListOrdered, Map, Loader2, AlertCircle, RefreshCw, Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -14,6 +14,7 @@ import { InteractiveTimeline } from '@/components/ui/Timeline';
 import { StreamingDots } from '@/components/ui/StreamingBadges';
 import { useAuthStore } from '@/store/authStore';
 import { useWatchStore } from '@/store/watchStore';
+import { useFavoritesStore } from '@/store/favoritesStore';
 import { useFilterStore } from '@/store/filterStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useRecommendation } from '@/hooks/useRecommendation';
@@ -42,6 +43,7 @@ export default function FranchisePage() {
 
   const { user } = useAuthStore();
   const { isWatched, toggleWatched } = useWatchStore();
+  const { isFavorite, toggleFavorite } = useFavoritesStore();
   const { filters } = useFilterStore();
   const { spoilerFreeMode } = useSettingsStore();
   const { nextItem, reason } = useRecommendation(watchOrders, activeTab);
@@ -157,12 +159,33 @@ export default function FranchisePage() {
                 {franchise.description}
               </p>
 
-              {/* Stats Row */}
+              {/* Stats Row & Favorite Button */}
               <div className="flex flex-wrap items-center gap-4">
                 <Stat icon={<Film className="w-4 h-4" />} label={`${displayMoviesCount} Movies`} />
                 {displaySeriesCount > 0 && (
                   <Stat icon={<Tv className="w-4 h-4" />} label={`${displaySeriesCount} Series`} />
                 )}
+                <Button
+                  variant={isFavorite(franchise.id) ? 'secondary' : 'outline'}
+                  size="sm"
+                  leftIcon={<Heart className={`w-4 h-4 ${isFavorite(franchise.id) ? 'fill-primary text-primary' : ''}`} />}
+                  onClick={() =>
+                    toggleFavorite(
+                      {
+                        id: franchise.id,
+                        type: 'franchise',
+                        title: franchise.name,
+                        posterUrl: franchise.poster_url,
+                        slugOrId: franchise.slug,
+                        franchiseId: franchise.id,
+                      },
+                      user?.id
+                    )
+                  }
+                  className={isFavorite(franchise.id) ? 'bg-primary/20 text-primary border border-primary/30' : ''}
+                >
+                  {isFavorite(franchise.id) ? 'Favorited' : 'Favorite Franchise'}
+                </Button>
               </div>
             </motion.div>
           </div>

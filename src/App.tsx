@@ -18,6 +18,8 @@ const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const SignupPage = lazy(() => import('@/pages/SignupPage'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage'));
 const UserSearchPage = lazy(() => import('@/pages/UserSearchPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
@@ -25,6 +27,7 @@ const AuthCallbackPage = lazy(() => import('@/pages/AuthCallbackPage'));
 const DevDiagnosticsPage = lazy(() => import('@/pages/DevDiagnosticsPage'));
 const CkgProposalReviewPage = lazy(() => import('@/pages/CkgProposalReviewPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+import { UsernameOnboardingModal } from '@/components/auth/UsernameOnboardingModal';
 
 // ─── Page Loading Fallback ──────────────────────────────────
 function PageLoader() {
@@ -63,6 +66,7 @@ export default function App() {
               <Route path="/movie/:id" element={<PageTransition><MovieDetailPage /></PageTransition>} />
               <Route path="/search" element={<PageTransition><SearchPage /></PageTransition>} />
               <Route path="/users" element={<PageTransition><UserSearchPage /></PageTransition>} />
+              <Route path="/find-users" element={<PageTransition><UserSearchPage /></PageTransition>} />
               <Route path="/search/users" element={<PageTransition><UserSearchPage /></PageTransition>} />
               <Route path="/upcoming" element={<PageTransition><UpcomingPage /></PageTransition>} />
               <Route path="/planner" element={<PageTransition><PlannerPage /></PageTransition>} />
@@ -72,6 +76,8 @@ export default function App() {
               <Route path="/auth/callback" element={<PageTransition><AuthCallbackPage /></PageTransition>} />
               <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
               <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
+              <Route path="/favorites" element={<PageTransition><FavoritesPage /></PageTransition>} />
+              <Route path="/settings" element={<PageTransition><SettingsPage /></PageTransition>} />
               <Route path="/profile/:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
               <Route path="/@:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
               <Route path="/u/:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
@@ -84,6 +90,7 @@ export default function App() {
         </Suspense>
       </main>
 
+      <UsernameOnboardingModal />
       <Footer />
     </div>
   );

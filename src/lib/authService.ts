@@ -33,15 +33,23 @@ function getLocalProfilesMap(): Record<string, Profile> {
 }
 
 export function saveLocalProfile(profile: Profile) {
+  const map = getLocalProfilesMap();
+  map[profile.username_normalized] = profile;
+  map[profile.id] = profile;
   memoryProfilesMap[profile.username_normalized] = profile;
   memoryProfilesMap[profile.id] = profile;
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(LOCAL_STORAGE_PROFILES_KEY, JSON.stringify(memoryProfilesMap));
+      localStorage.setItem(LOCAL_STORAGE_PROFILES_KEY, JSON.stringify(map));
     }
   } catch {
     // Ignore storage errors in test environments
   }
+}
+
+export function getLocalProfile(idOrUsername: string): Profile | null {
+  const map = getLocalProfilesMap();
+  return map[idOrUsername] || map[normalizeUsername(idOrUsername)] || null;
 }
 
 async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number = 800): Promise<T> {
@@ -157,6 +165,57 @@ export async function registerEmailAccount(
 
   saveLocalProfile(profile);
   return { user_id: userId, profile };
+}
+
+/**
+ * Creates or updates a profile for an authenticated Google / OAuth user.
+ */
+export async function createOrUpdateGoogleProfile(
+  user: { id: string; email?: string | null; user_metadata?: Record<string, any> },
+  username: string
+): Promise<Profile> {
+  const usernameVal = validateUsername(username);
+  if (!usernameVal.valid || !usernameVal.normalized) {
+    throw new Error(usernameVal.error || 'Invalid username');
+  }
+
+  const isAvailable = await checkUsernameAvailability(username);
+  if (!isAvailable) {
+    throw new Error('Username is already taken. Please choose another username.');
+  }
+
+  const normalized = usernameVal.normalized;
+  const userMetadata = user.user_metadata || {};
+  const displayName = userMetadata.full_name || userMetadata.name || username.trim();
+  const avatarUrl = userMetadata.avatar_url || userMetadata.picture || '';
+
+  const profile: Profile = {
+    id: user.id,
+    username: username.trim(),
+    username_normalized: normalized,
+    account_type: 'EMAIL',
+    email: user.email || null,
+    display_name: displayName,
+    avatar_url: avatarUrl,
+    spoiler_free_mode: false,
+    is_admin: false,
+    public_profile: false,
+    show_favorite_movies: true,
+    show_ratings: true,
+    show_reviews: true,
+    show_recommendations: true,
+    show_stats: true,
+    created_at: new Date().toISOString(),
+  };
+
+  try {
+    await withTimeout(supabase.from('profiles').upsert(profile), 500);
+  } catch (err) {
+    console.warn('[authService] Supabase profile upsert exception/timeout:', err);
+  }
+
+  saveLocalProfile(profile);
+  return profile;
 }
 
 /**

@@ -14,7 +14,9 @@ import { formatRuntime, formatYear, formatDate } from '@/lib/utils';
 import { getLifecycleCategory } from '@/lib/metadataRefresh';
 import { sortWatchOrdersByReleaseDate } from '@/lib/releaseOrdering';
 import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
+import { useAuthStore } from '@/store/authStore';
 import { useWatchStore } from '@/store/watchStore';
+import { useFavoritesStore } from '@/store/favoritesStore';
 
 import { SafeImage } from '@/components/ui/SafeImage';
 import { PreparationGuide } from '@/components/ui/PreparationGuide';
@@ -26,7 +28,9 @@ export default function MovieDetailPage() {
   const { content: franchiseItems, watchOrders: remoteWatchOrders } = useTMDbContent(staticContent?.franchise_id || '');
   const content = franchiseItems.find((c) => c.id === staticContent?.id || c.id === id) || staticContent;
 
+  const { user } = useAuthStore();
   const { isWatched, toggleWatched } = useWatchStore();
+  const { isFavorite, toggleFavorite } = useFavoritesStore();
   const isUpcomingTitle = staticContent ? isTheatricallyUpcoming(staticContent) : (content ? isTheatricallyUpcoming(content) : false);
 
   // Canonical lifecycle label derived from the STATIC catalog entry.
@@ -188,8 +192,28 @@ export default function MovieDetailPage() {
                     {isWatched(content.id) ? 'Watched' : 'Mark Watched'}
                   </Button>
                 )}
-                <Button variant="ghost" size="icon">
-                  <Heart className="w-5 h-5" />
+                <Button
+                  variant={isFavorite(content.id) ? 'secondary' : 'ghost'}
+                  size="icon"
+                  title={isFavorite(content.id) ? 'Remove from favorites' : 'Add to favorites'}
+                  onClick={() =>
+                    toggleFavorite(
+                      {
+                        id: content.id,
+                        type: 'movie',
+                        title: content.title,
+                        posterUrl: content.poster_url,
+                        slugOrId: content.id,
+                        franchiseId: content.franchise_id,
+                        rating: content.rating,
+                        year: formatYear(content.release_date),
+                      },
+                      user?.id
+                    )
+                  }
+                  className={isFavorite(content.id) ? 'text-primary border border-primary/30 bg-primary/20' : ''}
+                >
+                  <Heart className={`w-5 h-5 ${isFavorite(content.id) ? 'fill-primary text-primary' : ''}`} />
                 </Button>
                 <Button variant="ghost" size="icon">
                   <Share2 className="w-5 h-5" />

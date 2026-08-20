@@ -8,7 +8,43 @@ import {
   loginWithEmail,
   loginWithUsername,
   requestPasswordRecovery,
+  createOrUpdateGoogleProfile,
+  getLocalProfile,
+  saveLocalProfile,
 } from '@/lib/authService';
+
+const SESSION_STORAGE_KEY = 'cineorder_active_user_session';
+
+function withTimeout<T>(promise: PromiseLike<T>, ms = 600): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+function saveActiveSessionLocally(user: User | null, session: Session | null) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (user) {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ user, session }));
+      } else {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
+  } catch {}
+}
+
+function loadActiveSessionLocally(): { user: User; session: Session } | null {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    }
+  } catch {}
+  return null;
+}
 
 interface AuthState {
   user: User | null;
@@ -29,6 +65,7 @@ interface AuthState {
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   fetchProfile: (userId: string) => Promise<void>;
+  completeOnboarding: (username: string) => Promise<Profile>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -40,25 +77,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await withTimeout(supabase.auth.getSession(), 600);
       if (session?.user) {
         set({ user: session.user, session });
+        saveActiveSessionLocally(session.user, session);
         await get().fetchProfile(session.user.id);
+      } else {
+        const local = loadActiveSessionLocally();
+        if (local?.user) {
+          set({ user: local.user, session: local.session });
+          await get().fetchProfile(local.user.id);
+        }
       }
     } catch (error) {
-      console.error('Auth initialization error:', error);
+      console.warn('Auth initialization fallback:', error);
+      const local = loadActiveSessionLocally();
+      if (local?.user) {
+        set({ user: local.user, session: local.session });
+        await get().fetchProfile(local.user.id);
+      }
     } finally {
       set({ initialized: true });
     }
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      set({ user: session?.user ?? null, session });
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        saveActiveSessionLocally(null, null);
+        set({ user: null, session: null, profile: null });
+        return;
+      }
+
       if (session?.user) {
+        set({ user: session.user, session });
+        saveActiveSessionLocally(session.user, session);
         await get().fetchProfile(session.user.id);
-      } else {
-        set({ profile: null });
       }
     });
+  },
+
+  completeOnboarding: async (username: string) => {
+    const user = get().user;
+    if (!user) {
+      throw new Error('You must be signed in to choose a username.');
+    }
+
+    set({ loading: true });
+    try {
+      const profile = await createOrUpdateGoogleProfile(user, username);
+      set({ profile });
+      saveActiveSessionLocally(user, get().session);
+      return profile;
+    } finally {
+      set({ loading: false });
+    }
   },
 
   signUpEmail: async (email, password, username) => {
@@ -136,6 +207,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Ignore offline error
     }
+    saveActiveSessionLocally(null, null);
     set({ user: null, session: null, profile: null });
   },
 
@@ -150,32 +222,52 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const targetId = profile?.id || user?.id;
     if (!targetId) return;
 
-    try {
-      await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', targetId);
-    } catch {
-      // Ignore if offline
+    const updatedProfile = profile ? { ...profile, ...updates } : null;
+    if (updatedProfile) {
+      saveLocalProfile(updatedProfile);
+      set({ profile: updatedProfile });
     }
 
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    }));
+    try {
+      await withTimeout(
+        supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', targetId),
+        600
+      );
+    } catch (err) {
+      console.warn('[authStore] Update profile remote sync error:', err);
+    }
   },
 
   fetchProfile: async (userId) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const { data, error } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single(),
+        600
+      );
       if (!error && data) {
+        saveLocalProfile(data as Profile);
         set({ profile: data as Profile });
+        return;
       }
     } catch (error) {
-      console.error('Fetch profile error:', error);
+      console.warn('Fetch profile notice:', error);
+    }
+
+    // Fallback to local profile cache
+    const local = getLocalProfile(userId);
+    if (local) {
+      set({ profile: local });
     }
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).__AUTH_STORE__ = useAuthStore;
+}

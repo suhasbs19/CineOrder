@@ -144,12 +144,12 @@ export function Navbar() {
                           <UserMenuItem
                             icon={<Heart className="w-4 h-4" />}
                             label="Favorites"
-                            onClick={() => navigate('/profile?tab=favorites')}
+                            onClick={() => navigate('/favorites')}
                           />
                           <UserMenuItem
                             icon={<Settings className="w-4 h-4" />}
                             label="Settings"
-                            onClick={() => navigate('/profile?tab=settings')}
+                            onClick={() => navigate('/settings')}
                           />
                           {profile?.is_admin && (
                             <UserMenuItem
@@ -226,6 +226,8 @@ export function Navbar() {
                 {user ? (
                   <>
                     <MobileNavLink to="/profile" label="Profile" onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink to="/favorites" label="Favorites" onClick={() => setMobileMenuOpen(false)} />
+                    <MobileNavLink to="/settings" label="Settings" onClick={() => setMobileMenuOpen(false)} />
                     {profile?.is_admin && (
                       <MobileNavLink to="/admin" label="Admin Panel" onClick={() => setMobileMenuOpen(false)} />
                     )}
