@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 
 async function verifyProductionDeployment() {
   console.log('========================================================================');
-  console.log('   VERIFYING PRODUCTION VERCEL DEPLOYMENT: https://order.vercel.app    ');
+  console.log('   VERIFYING PRODUCTION VERCEL DEPLOYMENT: https://cineorder.vercel.app');
   console.log('========================================================================\n');
 
   let browser;
@@ -16,13 +16,13 @@ async function verifyProductionDeployment() {
     }
   }
 
-  const prodUrl = 'https://order.vercel.app';
+  const prodUrl = 'https://cineorder.vercel.app';
   const testMovieId = 'mcu-endgame';
   const maxAttempts = 15;
-  const pollIntervalMs = 6000;
+  const pollIntervalMs = 7000;
 
   console.log(`Target URL: ${prodUrl}/movie/${testMovieId}`);
-  console.log(`Expected Commit: 47681b6 (fix: mobile MovieDetail density and responsive layouts)`);
+  console.log(`Expected Commit: 48af99b`);
   console.log(`Polling for live Vercel deployment update...\n`);
 
   let deployed = false;
@@ -30,7 +30,7 @@ async function verifyProductionDeployment() {
 
   while (attempt < maxAttempts && !deployed) {
     attempt++;
-    console.log(`--- Attempt ${attempt}/${maxAttempts} (T+${(attempt - 1) * 6}s) ---`);
+    console.log(`--- Attempt ${attempt}/${maxAttempts} (T+${(attempt - 1) * 7}s) ---`);
 
     const context = await browser.newContext({
       viewport: { width: 375, height: 667 },
@@ -45,19 +45,16 @@ async function verifyProductionDeployment() {
     });
 
     try {
-      // Navigate to homepage first or directly to movie detail
-      await page.goto(`${prodUrl}/movie/${testMovieId}?_v=${Date.now()}`, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      // Navigate to root first, then client-side navigate or direct load
+      await page.goto(`${prodUrl}/`, { waitUntil: 'networkidle', timeout: 25000 });
+      await page.waitForTimeout(1000);
 
-      // Wait for page loader to disappear and content to render
-      await page.waitForFunction(() => {
-        return !document.body.innerText.includes('Loading...') && document.body.innerText.length > 50;
-      }, { timeout: 20000 });
-
-      await page.waitForTimeout(1500);
+      // Now navigate to movie detail page
+      await page.goto(`${prodUrl}/movie/${testMovieId}`, { waitUntil: 'networkidle', timeout: 25000 });
+      await page.waitForTimeout(2000);
 
       const pageInfo = await page.evaluate(() => {
         const title = document.title;
-        const bodySnippet = document.body.innerText.slice(0, 150).replace(/\n+/g, ' ');
         const statsGrid = document.querySelector('.grid.grid-cols-2');
         const nodeCards = Array.from(document.querySelectorAll('[data-testid="story-node-card"]'));
         const connBars = Array.from(document.querySelectorAll('[data-testid="story-connection-bar"]'));
@@ -86,7 +83,6 @@ async function verifyProductionDeployment() {
 
         return {
           title,
-          bodySnippet,
           hasNewStatsGrid: Boolean(statsGrid),
           statsHeight,
           hasNodeCardTestId: nodeCards.length > 0,
@@ -103,7 +99,6 @@ async function verifyProductionDeployment() {
 
       console.log(`  Live Evaluation on https://order.vercel.app:`);
       console.log(`    - Page title: "${pageInfo.title}"`);
-      console.log(`    - Body snippet: "${pageInfo.bodySnippet}"`);
       console.log(`    - hasNewStatsGrid (2-col grid): ${pageInfo.hasNewStatsGrid} (height: ${pageInfo.statsHeight}px)`);
       console.log(`    - hasNodeCardTestId (compact cards): ${pageInfo.hasNodeCardTestId} (count: ${pageInfo.nodeCardsCount}, card height: ${pageInfo.firstCardHeight}px, poster width: ${pageInfo.firstPosterWidth}px)`);
       console.log(`    - hasConnBarTestId (compact connection bar): ${pageInfo.hasConnBarTestId} (bar height: ${pageInfo.firstBarHeight}px)`);
@@ -115,7 +110,7 @@ async function verifyProductionDeployment() {
         await context.close();
         break;
       } else {
-        console.log(`    ⏳ Old build still cached/active on Vercel edge. Waiting for deployment to propagate...`);
+        console.log(`    ⏳ Deployment still building/propagating on Vercel. Waiting...`);
       }
     } catch (e: any) {
       console.log(`    ⚠️ Error during fetch/evaluate: ${e.message}`);
