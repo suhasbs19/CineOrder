@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const harryPotterFranchise: Franchise = {
   id: 'harry-potter',
@@ -202,7 +203,9 @@ export const harryPotterContent: Content[] = [
   }),
 ];
 
-export const harryPotterWatchOrders: WatchOrder[] = harryPotterContent.map((item, index) =>
+const sortedHpForRelease = [...harryPotterContent].sort(compareReleaseDates);
+
+export const harryPotterWatchOrders: WatchOrder[] = sortedHpForRelease.map((item, index) =>
   buildWatchOrder({
     id: `hp-rel-${index + 1}`,
     franchise_id: 'harry-potter',

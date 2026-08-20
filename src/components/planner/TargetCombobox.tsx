@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronDown, Check, Film, Tv, Sparkles, X, CornerDownLeft } from 'lucide-react';
 import { allContent } from '@/data/franchises';
+import { sortContentByReleaseDate } from '@/lib/releaseOrdering';
 import { generatePreparationGuide } from '@/lib/preparationGuide';
 import { highlightMatchText } from '@/lib/searchUtils';
 import { cn } from '@/lib/utils';
@@ -129,16 +130,20 @@ export function TargetCombobox({ value, onChange }: TargetComboboxProps) {
 
     if (!q) {
       // When empty, group into Titles with Preparation Requirements vs Direct Entry / Standalone Titles
-      const withPrep = allContent.filter((c) => {
-        const guide = generatePreparationGuide(c.id);
-        const count = guide ? guide.mustWatch.length + guide.recommended.length : 0;
-        return count > 0;
-      });
-      const withoutPrep = allContent.filter((c) => {
-        const guide = generatePreparationGuide(c.id);
-        const count = guide ? guide.mustWatch.length + guide.recommended.length : 0;
-        return count === 0;
-      });
+      const withPrep = sortContentByReleaseDate(
+        allContent.filter((c) => {
+          const guide = generatePreparationGuide(c.id);
+          const count = guide ? guide.mustWatch.length + guide.recommended.length : 0;
+          return count > 0;
+        })
+      );
+      const withoutPrep = sortContentByReleaseDate(
+        allContent.filter((c) => {
+          const guide = generatePreparationGuide(c.id);
+          const count = guide ? guide.mustWatch.length + guide.recommended.length : 0;
+          return count === 0;
+        })
+      );
 
       return {
         isSearching: false,
@@ -148,11 +153,13 @@ export function TargetCombobox({ value, onChange }: TargetComboboxProps) {
       };
     }
 
-    const matches = allContent.filter((c) => {
-      const title = c.title.toLowerCase();
-      const franchise = (c.franchise_id || '').toLowerCase();
-      return title.includes(q) || franchise.includes(q);
-    });
+    const matches = sortContentByReleaseDate(
+      allContent.filter((c) => {
+        const title = c.title.toLowerCase();
+        const franchise = (c.franchise_id || '').toLowerCase();
+        return title.includes(q) || franchise.includes(q);
+      })
+    );
 
     return { isSearching: true, major: [], others: matches, flat: matches };
   }, [query]);

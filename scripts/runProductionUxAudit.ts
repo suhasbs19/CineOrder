@@ -1,7 +1,6 @@
 import { allFranchises, allContent, allWatchOrders } from '../src/data/franchises/index';
 import { getFranchiseArtwork } from '../src/data/franchiseArtwork';
 import { RecommendationService } from '../src/lib/recommendationService';
-import { processAIQuery } from '../src/lib/aiAdvisorEngine';
 import { validateFranchiseVisualIdentities } from './verifyFranchiseVisualIdentity';
 
 console.log('========================================================================');
@@ -28,7 +27,7 @@ console.log('--- 1. Planner UX & Graph Plan Verification ---');
 
 // Complete catalog search in Planner
 const catalogCount = allContent.length;
-audit('1A. Complete catalog accessible in Planner', catalogCount === 225, `Catalog count: ${catalogCount}`);
+audit('1A. Complete catalog accessible in Planner', catalogCount === 240, `Catalog count: ${catalogCount}`);
 
 // Iron Man 1: 0 prerequisites / entry point
 const im1Traversal = RecommendationService.getTraversal('mcu-iron-man');
@@ -147,34 +146,7 @@ for (const mid of testMovies) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. AI ADVISOR AUDIT
-// ─────────────────────────────────────────────────────────────────────────────
-console.log('\n--- 5. AI Advisor Intent & Response Quality Audit ---');
 
-const advisorPrompts = [
-  { prompt: 'What about Harry Potter?', expectedKeyword: 'Harry Potter' },
-  { prompt: 'Tell me about Harry Potter', expectedKeyword: 'Harry Potter' },
-  { prompt: 'Harry Potter watch order', expectedKeyword: 'order' },
-  { prompt: 'Is Iron Man on OTT?', expectedKeyword: 'Iron Man' },
-  { prompt: 'What should I watch before Iron Man 2?', expectedKeyword: 'Iron Man' },
-  { prompt: 'What should I watch before Endgame?', expectedKeyword: 'Endgame' },
-  { prompt: 'Tell me about Avatar', expectedKeyword: 'Avatar' },
-  { prompt: 'Tell me about Alien', expectedKeyword: 'Alien' },
-];
-
-for (const ap of advisorPrompts) {
-  const response = processAIQuery(ap.prompt, []);
-  const textContent = response.text || '';
-  const hasContent = Boolean(textContent && textContent.length > 20);
-  const matchesKeyword = textContent.toLowerCase().includes(ap.expectedKeyword.toLowerCase()) || (response.data && JSON.stringify(response.data).toLowerCase().includes(ap.expectedKeyword.toLowerCase()));
-  const noSecretLeakage = !textContent.includes('API_KEY') && !textContent.includes('VITE_') && !textContent.includes('SUPABASE_');
-  audit(
-    `5. AI Advisor response for "${ap.prompt}"`,
-    hasContent && matchesKeyword && noSecretLeakage,
-    `Response length: ${textContent.length}`
-  );
-}
 
 console.log('\n========================================================================');
 console.log(` SUMMARY: ${passCount} PASSED, ${failCount} FAILED.`);

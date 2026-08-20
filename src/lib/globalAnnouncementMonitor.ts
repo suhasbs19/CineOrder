@@ -21,6 +21,25 @@ import {
   verifyArtworkUrls,
   slugifyTitle,
 } from './announcementDiscoveryEngine';
+import {
+  detectCatalogArtworkRefresh,
+} from './artworkResolverEngine';
+import {
+  discoverTrailersForContent,
+} from './trailerDiscoveryEngine';
+import {
+  globalTrailerIntelligenceStore,
+} from './trailerIntelligenceStore';
+import type {
+  DiscoveredTrailerEvent,
+  VerifiedTrailerMetadata,
+  RawTMDbVideo,
+} from '../types/trailerDiscovery';
+import type {
+  TrailerMonitorScanResult,
+  RawTrailerObservationInput,
+  TrailerContentContext,
+} from '../types/trailerIntelligence';
 import { getLifecycleCategory, computeOttAvailable } from './metadataRefresh';
 import { isPastDate, normalizeDateStr } from './dateUtils';
 
@@ -117,17 +136,19 @@ const STATIC_FRANCHISE_KEYWORDS: Record<string, string[]> = {
   'marvel-cinematic-universe': ['marvel', 'mcu', 'avengers', 'spider-man', 'iron man', 'thor', 'captain america', 'wakanda', 'visionquest', 'blade', 'fantastic four', 'mutant'],
   'star-wars': ['star wars', 'jedi', 'sith', 'lucasfilm', 'mandalorian', 'skywalker', 'grogu', 'lightsaber'],
   'harry-potter': ['harry potter', 'hogwarts', 'wizarding world', 'dumbledore', 'voldemort', 'gryffindor'],
-  'dc-universe': ['dc studios', 'dc extended universe', 'batman', 'superman', 'gotham', 'joker', 'justice league', 'wonder woman', 'green lantern', 'peacemaker'],
-  'avatar': ['avatar', 'pandora', 'james cameron', 'na\'vi', 'sulley', 'eywa'],
-  'alien': ['alien', 'xenomorph', 'weyland-yutani', 'facehugger', 'prometheus', 'ripley'],
-  'jurassic-park': ['jurassic', 'dinosaur', 'ingen', 'isla nublar', 't-rex'],
+  'dc-extended-universe': ['dc', 'dc studios', 'dc extended universe', 'dc universe', 'batman', 'superman', 'gotham', 'joker', 'justice league', 'wonder woman', 'green lantern', 'peacemaker', 'lanterns'],
+  'dc-universe': ['dc', 'dc studios', 'dc extended universe', 'dc universe', 'batman', 'superman', 'gotham', 'joker', 'justice league', 'wonder woman', 'green lantern', 'peacemaker', 'lanterns'],
+  'avatar': ['avatar', 'pandora', 'james cameron', 'na\'vi', 'sulley', 'eywa', 'tulkun'],
+  'alien': ['alien', 'xenomorph', 'weyland-yutani', 'facehugger', 'prometheus', 'ripley', 'fede alvarez'],
+  'jurassic-park': ['jurassic', 'dinosaur', 'ingen', 'isla nublar', 't-rex', 'jurassic world'],
   'transformers': ['transformer', 'autobot', 'decepticon', 'optimus prime', 'megatron', 'cybertron'],
   'john-wick': ['john wick', 'high table', 'continental', 'baba yaga', 'keanu reeves'],
   'fast-and-furious': ['fast & furious', 'toretto', 'dom toretto', 'fast x', 'fast and furious'],
   'mission-impossible': ['mission: impossible', 'ethan hunt', 'imf', 'tom cruise', 'dead reckoning'],
   'the-conjuring-universe': ['conjuring', 'ed and lorraine warren', 'annabelle', 'valak', 'the nun', 'the crooked man'],
-  'x-men': ['x-men', 'wolverine', 'mutants', 'magneto', 'charles xavier', 'deadpool'],
-  'the-lord-of-the-rings': ['lord of the rings', 'middle-earth', 'sauron', 'gandalf', 'mordor', 'one ring'],
+  'x-men': ['x-men', 'wolverine', 'mutants', 'magneto', 'charles xavier', 'deadpool', 'mutant'],
+  'lord-of-the-rings': ['lord of the rings', 'middle-earth', 'sauron', 'gandalf', 'mordor', 'one ring', 'gollum'],
+  'the-lord-of-the-rings': ['lord of the rings', 'middle-earth', 'sauron', 'gandalf', 'mordor', 'one ring', 'gollum'],
   'the-hobbit': ['the hobbit', 'bilbo baggins', 'smaug', 'erebor', 'thorin'],
   'evil-dead': ['evil dead', 'necronomicon', 'ash williams', 'deadite'],
   'insidious': ['insidious', 'the further', 'elise rainier', 'astral projection'],
@@ -142,7 +163,16 @@ export function matchFranchiseFromContext(
 ): FranchiseMatchResult {
   // 1. Explicit ID Resolution
   if (explicitFranchiseId) {
-    const found = allFranchises.find((f) => f.id === explicitFranchiseId || f.slug === explicitFranchiseId);
+    const normId =
+      explicitFranchiseId === 'dc-universe'
+        ? 'dc-extended-universe'
+        : explicitFranchiseId === 'the-lord-of-the-rings'
+        ? 'lord-of-the-rings'
+        : explicitFranchiseId;
+
+    const found = allFranchises.find(
+      (f) => f.id === normId || f.id === explicitFranchiseId || f.slug === explicitFranchiseId || f.slug === normId
+    );
     if (found) {
       return {
         franchiseId: found.id,
@@ -189,7 +219,7 @@ export function matchFranchiseFromContext(
     }
 
     // Curated keyword dictionary match
-    const curated = STATIC_FRANCHISE_KEYWORDS[f.id] || [];
+    const curated = STATIC_FRANCHISE_KEYWORDS[f.id] || (f.slug ? STATIC_FRANCHISE_KEYWORDS[f.slug] : []) || [];
     for (const kw of curated) {
       if (text.includes(kw) && !hitTokens.includes(kw)) {
         hits += 1;
@@ -261,10 +291,19 @@ export function detectCatalogChanges(
   }
 
   if (!match) {
+    const isCancelled = event.eventType === 'CANCELLATION' || event.statusCandidate === 'cancelled';
     return {
       isExistingTitle: false,
       detectedEventType: event.eventType || 'NEW_ANNOUNCEMENT',
-      detectedCategory: 'NEW_TITLES',
+      detectedCategory: isCancelled ? 'CANCELLATIONS' : 'NEW_TITLES',
+      diff: isCancelled
+        ? {
+            fieldName: 'status',
+            previousValue: 'announced',
+            proposedValue: 'cancelled',
+            diffSummary: `Project '${event.title}' reported as cancelled before production.`,
+          }
+        : undefined,
     };
   }
 
@@ -364,6 +403,29 @@ export function detectCatalogChanges(
         diffSummary: `Title renamed from '${current.title}' to '${event.title.trim()}'.`,
       },
     };
+  }
+
+  // Priority 5: Check for Artwork Changes / Upgrade
+  if (event.posterUrl || event.backdropUrl) {
+    const refresh = detectCatalogArtworkRefresh(current, {
+      posterUrl: event.posterUrl,
+      backdropUrl: event.backdropUrl,
+      tmdbId: event.tmdbId,
+    });
+    if (refresh.hasArtworkChange) {
+      return {
+        isExistingTitle: true,
+        matchedContent: current,
+        detectedEventType: 'STATUS_CHANGE',
+        detectedCategory: 'ARTWORK_CHANGES',
+        diff: {
+          fieldName: 'poster_url',
+          previousValue: current.poster_url || '/placeholder-poster.svg',
+          proposedValue: refresh.proposedPoster,
+          diffSummary: `Verified artwork updated from placeholder/unverified to verified TMDb artwork.`,
+        },
+      };
+    }
   }
 
   return {
@@ -606,6 +668,7 @@ export class GlobalAnnouncementMonitor {
 
         if (changeResult.isExistingTitle && changeResult.matchedContent) {
           const matched = changeResult.matchedContent;
+          const candidate = this.buildCandidateFromEvent(rawEvent, matched.franchise_id, sourceVer, matched.id);
           const changePkg: AnnouncementProposalPackage = {
             id: `prop-mod-${changeResult.detectedCategory.toLowerCase()}-${Date.now()}-${matched.id}`,
             franchiseId: matched.franchise_id,
@@ -613,13 +676,14 @@ export class GlobalAnnouncementMonitor {
             title: `[${changeResult.detectedCategory.replace('_', ' ')}] ${matched.title}`,
             category: changeResult.detectedCategory,
             eventType: changeResult.detectedEventType,
-            candidate: this.buildCandidateFromEvent(rawEvent, matched.franchise_id, sourceVer, matched.id),
+            candidate,
             proposedEdges: [],
             diff: changeResult.diff,
             status: 'pending',
             overallQualityScore: Math.round(sourceVer.verificationScore * 100),
             sourceVerification: sourceVer,
             sourceEvent: rawEvent,
+            artworkVerification: candidate.artworkVerification,
             eventHash: hash,
             createdAt: scanTimestamp,
           };
@@ -673,6 +737,7 @@ export class GlobalAnnouncementMonitor {
           overallQualityScore: Math.min(100, qualityScore),
           sourceVerification: sourceVer,
           sourceEvent: rawEvent,
+          artworkVerification: candidate.artworkVerification,
           eventHash: hash,
           createdAt: scanTimestamp,
         };
@@ -798,6 +863,7 @@ export class GlobalAnnouncementMonitor {
       director: event.director,
       posterUrl: artwork.poster,
       backdropUrl: artwork.backdrop,
+      artworkVerification: artwork.resolution,
       isCanon: true,
       isRequired: true,
       lifecycleCategory,
@@ -808,6 +874,54 @@ export class GlobalAnnouncementMonitor {
       integrityValidationPassed: true,
       integrityNotes: ['Candidate processed via Global Announcement Monitor.'],
     };
+  }
+
+  /**
+   * Phase 2 Trailer Intelligence: Discover and stage official trailers for a catalog title.
+   */
+  public async scanTrailersForContent(
+    content: Content,
+    knownTrailers: VerifiedTrailerMetadata[] = []
+  ): Promise<DiscoveredTrailerEvent[]> {
+    return discoverTrailersForContent(content, knownTrailers);
+  }
+
+  /**
+   * Phase 3 Trailer Intelligence Pipeline: Deterministic catalog trailer scanning & proposal generation.
+   */
+  public scanTrailerIntelligenceForCatalog(
+    titles: Content[],
+    titleVideosMap: Record<string, RawTMDbVideo[]>,
+    observationsMap: Record<string, Record<string, RawTrailerObservationInput[]>> = {},
+    fixedTimestamp = '2026-08-17T00:00:00.000Z'
+  ): TrailerMonitorScanResult {
+    return globalTrailerIntelligenceStore.scanCatalogTitles(
+      titles,
+      titleVideosMap,
+      observationsMap,
+      fixedTimestamp
+    );
+  }
+
+  public scanTrailerIntelligenceForContent(
+    content: Content,
+    rawVideos: RawTMDbVideo[],
+    observationsMap: Record<string, RawTrailerObservationInput[]> = {},
+    fixedTimestamp = '2026-08-17T00:00:00.000Z'
+  ) {
+    const context: TrailerContentContext = {
+      contentId: content.id,
+      franchiseId: content.franchise_id,
+      continuityId: (content as any).continuity || content.franchise_id,
+      title: content.title,
+      tmdbId: content.tmdb_id || undefined,
+    };
+    return globalTrailerIntelligenceStore.processTrailerScan(
+      context,
+      rawVideos,
+      observationsMap,
+      fixedTimestamp
+    );
   }
 }
 

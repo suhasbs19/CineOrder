@@ -363,7 +363,8 @@ export function validateDatasetIntegrity(): DatasetIntegrityReport {
   // 10. Release Date & Poster Validity Check
   checksCount++;
   for (const item of allContent) {
-    if (!item.release_date || item.release_date.trim() === '') {
+    const isUpcomingTba = item.status === 'upcoming' || item.status === 'in_production' || item.status === 'tba';
+    if (!isUpcomingTba && (!item.release_date || item.release_date.trim() === '')) {
       issues.push({
         severity: 'error',
         category: 'missing_release_date_or_image',

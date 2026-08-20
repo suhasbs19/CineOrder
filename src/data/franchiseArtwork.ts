@@ -104,6 +104,24 @@ export const franchiseArtworkMap: Record<string, FranchiseArtworkConfig> = {
     banner: 'https://image.tmdb.org/t/p/w1280/tJvRdhlkonjBLBUpTqp0RPPujxJ.jpg',
     logo: '/logos/insidious.svg',
   },
+  'avatar': {
+    franchise_id: 'avatar',
+    poster: 'https://image.tmdb.org/t/p/w500/3C5brXxnBxfkeKWwA1Fh4xvy4wr.jpg',
+    banner: 'https://image.tmdb.org/t/p/w1280/4uwX70EzaWVcGUXMtXPoexlNAff.jpg',
+    logo: '/logos/avatar.svg',
+  },
+  'alien': {
+    franchise_id: 'alien',
+    poster: 'https://image.tmdb.org/t/p/w500/gWFHIY77cRVoBRGERwMHqpD27gc.jpg',
+    banner: 'https://image.tmdb.org/t/p/w1280/6X42JnSMdo3dPAswOHUuvebdTq7.jpg',
+    logo: '/logos/alien.svg',
+  },
+  'spider-man': {
+    franchise_id: 'spider-man',
+    poster: 'https://image.tmdb.org/t/p/w500/gh4c2ubi14WogAhvCDvceFkexIF.jpg',
+    banner: 'https://image.tmdb.org/t/p/w1280/sWvxBXviRvmOpNq6rLShyW25b42.jpg',
+    logo: '/logos/spider-man.svg',
+  },
 };
 
 export function getFranchiseArtwork(franchiseId: string): FranchiseArtworkConfig {

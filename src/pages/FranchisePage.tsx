@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import {
   Film, Tv, Clock, Star, Calendar, Check, Eye, EyeOff,
-  Sparkles, Play, Info, ListOrdered, Map, Loader2, AlertCircle, RefreshCw,
+  Play, Info, ListOrdered, Map, Loader2, AlertCircle, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -25,8 +25,9 @@ import {
 import {
   formatRuntime, formatYear, cn,
 } from '@/lib/utils';
+import { sortWatchOrdersByReleaseDate } from '@/lib/releaseOrdering';
+import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
 import type { WatchOrder, OrderType } from '@/types';
-import { AIAssistantModal } from '@/components/ui/AIAssistantModal';
 import { SafeImage } from '@/components/ui/SafeImage';
 
 export default function FranchisePage() {
@@ -34,7 +35,6 @@ export default function FranchisePage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<OrderType>('release');
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
-  const [isAIOpen, setIsAIOpen] = useState(false);
   const franchise = getFranchiseBySlug(slug || '');
   const { watchOrders, franchiseHeader, loading, error, refetch } = useTMDbContent(franchise?.id || '');
   const stats = franchise ? getFranchiseStats(franchise.id) : null;
@@ -66,8 +66,13 @@ export default function FranchisePage() {
   const filteredOrders = useMemo(() => {
     if (!franchise) return [];
     let orders = watchOrders
-      .filter((o) => o.order_type === activeTab && o.franchise_id === franchise.id && o.content?.franchise_id === franchise.id)
-      .sort((a, b) => a.position - b.position);
+      .filter((o) => o.order_type === activeTab && o.franchise_id === franchise.id && o.content?.franchise_id === franchise.id);
+
+    if (activeTab === 'release') {
+      orders = sortWatchOrdersByReleaseDate(orders);
+    } else {
+      orders = orders.sort((a, b) => a.position - b.position);
+    }
 
     if (filters.types.length > 0) {
       orders = orders.filter((o) => o.content && filters.types.includes(o.content.type));
@@ -158,14 +163,6 @@ export default function FranchisePage() {
                 {displaySeriesCount > 0 && (
                   <Stat icon={<Tv className="w-4 h-4" />} label={`${displaySeriesCount} Series`} />
                 )}
-                <Button
-                  size="sm"
-                  onClick={() => setIsAIOpen(true)}
-                  className="ml-1 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-500 text-white font-semibold flex items-center gap-2 px-3.5 shadow-lg border border-white/10"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Ask AI Assistant</span>
-                </Button>
               </div>
             </motion.div>
           </div>
@@ -388,13 +385,6 @@ export default function FranchisePage() {
           </div>
         )}
       </div>
-
-      <AIAssistantModal
-        isOpen={isAIOpen}
-        onClose={() => setIsAIOpen(false)}
-        franchise={franchise}
-        currentContent={nextItem || undefined}
-      />
     </>
   );
 }
@@ -514,18 +504,28 @@ function WatchOrderItem({
       {/* Actions */}
       <div className="hidden sm:flex flex-col gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         {isLoggedIn && (
-          <button
-            onClick={onToggleWatched}
-            className={cn(
-              'p-2 rounded-lg transition-colors',
-              watched
-                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
-            )}
-            title={watched ? 'Mark as unwatched' : 'Mark as watched'}
-          >
-            {watched ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-          </button>
+          isTheatricallyUpcoming(content) ? (
+            <button
+              disabled
+              className="p-2 rounded-lg bg-white/5 text-muted/30 cursor-not-allowed border border-white/5"
+              title="Not yet released — cannot be marked as watched"
+            >
+              <EyeOff className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onToggleWatched}
+              className={cn(
+                'p-2 rounded-lg transition-colors',
+                watched
+                  ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+              )}
+              title={watched ? 'Mark as unwatched' : 'Mark as watched'}
+            >
+              {watched ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </button>
+          )
         )}
       </div>
     </motion.div>

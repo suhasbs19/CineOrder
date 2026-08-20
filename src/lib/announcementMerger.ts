@@ -46,6 +46,20 @@ title: ${JSON.stringify(c.title)},`;
 status: 'cancelled',`;
   }
 
+  if (pkg.category === 'ARTWORK_CHANGES') {
+    return `// In src/data/franchises/${pkg.franchiseId}.ts:
+// Update item '${c.id}' artwork:
+poster_url: '${c.posterUrl}',
+backdrop_url: '${c.backdropUrl}',`;
+  }
+
+  if (pkg.category === 'METADATA_CHANGES') {
+    return `// In src/data/franchises/${pkg.franchiseId}.ts:
+// Update item '${c.id}' metadata:
+status: '${c.status}',
+overview: ${JSON.stringify(c.overview)},`;
+  }
+
   // Default NEW_TITLES snippet
   return `  buildContent({
     id: '${c.id}',

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, XCircle,
   ExternalLink, Eye, ArrowRight, GitPullRequest, Layers, Edit3,
-  Sparkles, Globe, PlusCircle, Check, Copy, Film, Tv, Calendar, RefreshCw
+  Sparkles, Globe, PlusCircle, Check, Copy, Film, Tv, Calendar, RefreshCw, Image as ImageIcon
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +20,8 @@ import {
 } from '@/lib/globalAnnouncementMonitor';
 import { mergeAnnouncementProposal, generateFranchiseContentSnippet } from '@/lib/announcementMerger';
 import { allFranchises } from '@/data/franchises/index';
+import { catalogCompletenessStore } from '@/lib/catalogCompletenessStore';
+import { TrailerIntelligenceReviewTab } from '@/components/TrailerIntelligenceReviewTab';
 import type {
   CKGProposalPackage,
   ProposedStoryEdge,
@@ -31,9 +33,15 @@ import type {
   DiscoveredAnnouncement,
   ProposalCategory,
 } from '@/types/announcementDiscovery';
+import type {
+  CandidateMissingTitleProposal,
+  GlobalCompletenessAuditReport,
+  CompletenessGapType,
+  ProposalReviewStatus,
+} from '@/types/catalogCompletenessAudit';
 
 export default function CkgProposalReviewPage() {
-  const [activeTab, setActiveTab] = useState<'ckg-edges' | 'announcements'>('announcements');
+  const [activeTab, setActiveTab] = useState<'ckg-edges' | 'announcements' | 'completeness' | 'trailer-intelligence'>('trailer-intelligence');
   const [proposals, setProposals] = useState<CKGProposalPackage[]>(() => ckgProposalStore.getProposals());
   const [versionState, setVersionState] = useState(() => ckgProposalStore.getVersioningState());
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'all'>('pending');
@@ -41,6 +49,17 @@ export default function CkgProposalReviewPage() {
   const [diffEdge, setDiffEdge] = useState<ProposedStoryEdge | null>(null);
   const [editEdge, setEditEdge] = useState<ProposedStoryEdge | null>(null);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Global Catalog Completeness State
+  const [completenessReport, setCompletenessReport] = useState<GlobalCompletenessAuditReport>(() =>
+    catalogCompletenessStore.getReport()
+  );
+  const [completenessStatusFilter, setCompletenessStatusFilter] = useState<ProposalReviewStatus | 'all'>('all');
+  const [completenessGapFilter, setCompletenessGapFilter] = useState<CompletenessGapType | 'all'>('all');
+  const [completenessFranchiseFilter, setCompletenessFranchiseFilter] = useState<string>('all');
+  const [completenessSearchQuery, setCompletenessSearchQuery] = useState<string>('');
+  const [completenessPrModalProposal, setCompletenessPrModalProposal] = useState<CandidateMissingTitleProposal | null>(null);
+  const [isRescanningCompleteness, setIsRescanningCompleteness] = useState<boolean>(false);
 
   // Announcement Discovery & Continuous Monitoring State
   const [announcementProposals, setAnnouncementProposals] = useState<AnnouncementProposalPackage[]>(() => {
@@ -93,6 +112,47 @@ export default function CkgProposalReviewPage() {
       return true;
     });
   }, [announcementProposals, announcementFranchiseFilter, announcementCategoryFilter]);
+
+  const filteredCompletenessProposals = useMemo(() => {
+    return catalogCompletenessStore.filterProposals({
+      status: completenessStatusFilter,
+      gapType: completenessGapFilter,
+      franchiseId: completenessFranchiseFilter,
+      searchQuery: completenessSearchQuery,
+    });
+  }, [
+    completenessReport,
+    completenessStatusFilter,
+    completenessGapFilter,
+    completenessFranchiseFilter,
+    completenessSearchQuery,
+  ]);
+
+  const handleCompletenessApprove = (proposalId: string) => {
+    const success = catalogCompletenessStore.updateProposalStatus(proposalId, 'approved');
+    if (success) {
+      setCompletenessReport(catalogCompletenessStore.getReport());
+      showToast('Missing title proposal approved for catalog integration!', 'success');
+    }
+  };
+
+  const handleCompletenessReject = (proposalId: string) => {
+    const success = catalogCompletenessStore.updateProposalStatus(proposalId, 'rejected');
+    if (success) {
+      setCompletenessReport(catalogCompletenessStore.getReport());
+      showToast('Proposal rejected and archived in audit log.', 'error');
+    }
+  };
+
+  const handleRescanCompleteness = () => {
+    setIsRescanningCompleteness(true);
+    setTimeout(() => {
+      const freshReport = catalogCompletenessStore.getReport(true);
+      setCompletenessReport(freshReport);
+      setIsRescanningCompleteness(false);
+      showToast(`Global completeness audit completed: ${freshReport.totalGapsDetected} gap(s) analyzed across ${freshReport.totalFranchisesAudited} franchises.`, 'success');
+    }, 400);
+  };
 
   const handleApprove = (pkgId: string) => {
     const success = ckgProposalStore.updateProposalStatus(pkgId, 'approved');
@@ -266,7 +326,22 @@ export default function CkgProposalReviewPage() {
         </div>
 
         {/* Navigation Sub-Tabs */}
-        <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-3 border-b border-white/10 pb-3 flex-wrap">
+          <button
+            onClick={() => setActiveTab('completeness')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all ${
+              activeTab === 'completeness'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-lg'
+                : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <Film className="w-4 h-4 text-amber-400" />
+            Global Catalog Completeness
+            <Badge variant="default" className="text-[10px] bg-amber-950 text-amber-300 border-amber-500/30">
+              {completenessReport.totalGapsDetected} Gaps
+            </Badge>
+          </button>
+
           <button
             onClick={() => setActiveTab('announcements')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all ${
@@ -279,6 +354,21 @@ export default function CkgProposalReviewPage() {
             Global Announcement Discovery
             <Badge variant="default" className="text-[10px] bg-cyan-950 text-cyan-300 border-cyan-500/30">
               {announcementProposals.length} Discovered
+            </Badge>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('trailer-intelligence')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all ${
+              activeTab === 'trailer-intelligence'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-lg'
+                : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <Film className="w-4 h-4 text-rose-400" />
+            Trailer Intelligence
+            <Badge variant="default" className="text-[10px] bg-rose-950 text-rose-300 border-rose-500/30">
+              Trailers & Evidence
             </Badge>
           </button>
 
@@ -297,6 +387,292 @@ export default function CkgProposalReviewPage() {
             </Badge>
           </button>
         </div>
+
+        {/* TAB 0: GLOBAL CATALOG COMPLETENESS AUDIT */}
+        {activeTab === 'completeness' && (
+          <div className="space-y-6">
+            {/* Header Banner & Telemetry Bar */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-card to-purple-950/30 border border-amber-500/20 shadow-2xl space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      <Sparkles className="w-3 h-3 mr-1 animate-pulse" /> Universal Completeness Audit
+                    </span>
+                    <span className="text-xs font-mono text-muted">
+                      Franchises Audited: <strong className="text-amber-300">{completenessReport.totalFranchisesAudited}</strong> • Total Titles: <strong className="text-white">{completenessReport.totalTitlesAudited}</strong>
+                    </span>
+                  </div>
+                  <h2 className="text-base font-bold text-white">Global Missing Canonical Content & Narrative Dependency Auditor</h2>
+                  <p className="text-xs text-muted font-mono">
+                    Dynamic audit scanner for sequential gaps, missing sequels/prequels, spin-offs, TV series, crossover multiverse dependencies, and broken graph links across all franchises.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    onClick={handleRescanCompleteness}
+                    disabled={isRescanningCompleteness}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs font-mono bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRescanningCompleteness ? 'animate-spin' : ''}`} />
+                    {isRescanningCompleteness ? 'Auditing Catalog...' : 'Rescan All Franchises'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Metrics Summary Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 pt-2 border-t border-white/5">
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Franchises</div>
+                  <div className="text-lg font-black text-amber-300 mt-0.5">{completenessReport.totalFranchisesAudited}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Titles Audited</div>
+                  <div className="text-lg font-black text-white mt-0.5">{completenessReport.totalTitlesAudited}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Gaps Detected</div>
+                  <div className="text-lg font-black text-amber-400 mt-0.5">{completenessReport.totalGapsDetected}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Continuity Gaps</div>
+                  <div className="text-lg font-black text-cyan-300 mt-0.5">{completenessReport.summaryMetrics.continuityGapsCount}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Prerequisites</div>
+                  <div className="text-lg font-black text-purple-300 mt-0.5">{completenessReport.summaryMetrics.missingPrerequisitesCount}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Broken Edges</div>
+                  <div className={`text-lg font-black mt-0.5 ${completenessReport.brokenGraphDependencies.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {completenessReport.brokenGraphDependencies.length}
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                  <div className="text-[10px] font-mono text-muted uppercase">Pending Review</div>
+                  <div className="text-lg font-black text-amber-300 mt-0.5">{completenessReport.summaryMetrics.pendingApprovalsCount}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-col sm:flex-row gap-3 p-4 rounded-xl bg-card border border-white/10">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search missing title proposals by name, franchise, or continuity..."
+                  value={completenessSearchQuery}
+                  onChange={(e) => setCompletenessSearchQuery(e.target.value)}
+                  className="w-full bg-background border border-white/10 text-white rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={completenessFranchiseFilter}
+                  onChange={(e) => setCompletenessFranchiseFilter(e.target.value)}
+                  className="bg-background border border-white/10 text-xs font-mono text-white rounded-lg px-3 py-2"
+                >
+                  <option value="all">All Franchises ({completenessReport.totalFranchisesAudited})</option>
+                  {allFranchises.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={completenessGapFilter}
+                  onChange={(e) => setCompletenessGapFilter(e.target.value as any)}
+                  className="bg-background border border-white/10 text-xs font-mono text-white rounded-lg px-3 py-2"
+                >
+                  <option value="all">All Gap Categories</option>
+                  <option value="MISSING_CANONICAL_TITLE">Missing Canonical Title</option>
+                  <option value="MISSING_SEQUEL">Missing Sequel</option>
+                  <option value="MISSING_PREQUEL">Missing Prequel</option>
+                  <option value="MISSING_SPINOFF">Missing Spin-Off</option>
+                  <option value="MISSING_SERIES">Missing Series</option>
+                  <option value="MISSING_CROSSOVER_CONTEXT">Crossover Context</option>
+                  <option value="MISSING_CONTINUITY_ENTRY">Continuity Entry</option>
+                </select>
+
+                <select
+                  value={completenessStatusFilter}
+                  onChange={(e) => setCompletenessStatusFilter(e.target.value as any)}
+                  className="bg-background border border-white/10 text-xs font-mono text-white rounded-lg px-3 py-2"
+                >
+                  <option value="all">All Review States</option>
+                  <option value="pending">Pending Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Proposal Cards List */}
+            <div className="space-y-4">
+              {filteredCompletenessProposals.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-card border border-white/10 text-center space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+                  <div className="text-sm font-bold text-white">No Missing Content Proposals Found</div>
+                  <p className="text-xs font-mono text-muted max-w-md mx-auto">
+                    The active filters did not match any missing canonical titles or narrative dependency gaps.
+                  </p>
+                </div>
+              ) : (
+                filteredCompletenessProposals.map((proposal) => (
+                  <div
+                    key={proposal.proposalId}
+                    className="p-5 rounded-2xl bg-card border border-white/10 shadow-xl space-y-4 hover:border-amber-500/30 transition-all"
+                  >
+                    {/* Proposal Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="default" className="text-[10px] bg-amber-950 text-amber-300 border-amber-500/30 font-mono font-bold">
+                          {proposal.gapType.replace(/_/g, ' ')}
+                        </Badge>
+                        <Badge variant="default" className="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/30 font-mono">
+                          {proposal.franchiseName}
+                        </Badge>
+                        <Badge variant="default" className="text-[10px] bg-purple-950 text-purple-300 border border-purple-500/30 font-mono">
+                          Continuity: {proposal.continuity}
+                        </Badge>
+                        <Badge
+                          variant="default"
+                          className={`text-[10px] font-mono border ${
+                            proposal.reviewStatus === 'approved'
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                              : proposal.reviewStatus === 'rejected'
+                              ? 'bg-rose-950 text-rose-300 border-rose-500/40'
+                              : 'bg-amber-950/40 text-amber-300 border-amber-500/30'
+                          }`}
+                        >
+                          Status: {proposal.reviewStatus.toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <div className="text-[11px] font-mono text-muted flex items-center gap-2">
+                        <span>Confidence: <strong className="text-emerald-400">{(proposal.evidence.confidenceScore * 100).toFixed(0)}%</strong></span>
+                        {proposal.tmdbId && <span>TMDb: <strong className="text-white">{proposal.tmdbId}</strong></span>}
+                      </div>
+                    </div>
+
+                    {/* Proposal Body */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 font-mono text-xs">
+                      <div className="lg:col-span-2 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-white font-sans">{proposal.title}</h3>
+                          {proposal.releaseYear && (
+                            <span className="text-xs text-muted font-mono">({proposal.releaseYear})</span>
+                          )}
+                          <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-muted">
+                            {proposal.mediaType}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300 font-sans leading-relaxed">{proposal.overview}</p>
+
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                          <div className="text-[10px] font-bold text-amber-300 uppercase">Detection Reasons:</div>
+                          <ul className="list-disc list-inside space-y-0.5 text-[11px] text-muted font-sans">
+                            {proposal.reasonsDetected.map((r, i) => (
+                              <li key={i}>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Evidence & Placement Sidebar */}
+                      <div className="p-3.5 rounded-xl bg-black/30 border border-white/5 space-y-2 text-[11px]">
+                        <div>
+                          <span className="text-muted">Source:</span> <strong className="text-white">{proposal.evidence.source}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted">Lifecycle:</span> <strong className="text-cyan-300">{proposal.lifecycleClassification.lifecycleCategory}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted">Chronological Sort Key:</span> <span className="text-amber-300">{proposal.chronologicalPlacement.releaseDateSortKey}</span>
+                        </div>
+                        {proposal.director && (
+                          <div>
+                            <span className="text-muted">Director:</span> <strong className="text-white">{proposal.director}</strong>
+                          </div>
+                        )}
+                        {proposal.duplicateCheck.isDuplicate && (
+                          <div className="p-2 rounded bg-rose-950/30 border border-rose-500/30 text-rose-300 text-[10px]">
+                            ⚠️ {proposal.duplicateCheck.duplicateReason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Proposed Story Knowledge Graph Linkages */}
+                    {proposal.proposedStoryRelationships.length > 0 && (
+                      <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 space-y-2">
+                        <div className="text-[10px] font-mono font-bold text-purple-300 uppercase flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Proposed Story Graph Linkages ({proposal.proposedStoryRelationships.length})
+                        </div>
+                        {proposal.proposedStoryRelationships.map((rel, idx) => (
+                          <div key={idx} className="text-xs font-mono text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded bg-black/40">
+                            <div className="flex items-center gap-2">
+                              <span className="text-cyan-300 font-bold">{rel.sourceId}</span>
+                              <ArrowRight className="w-3 h-3 text-muted" />
+                              <span className="text-emerald-300 font-bold">{rel.targetId}</span>
+                              <span className="text-muted">({rel.relationship} • {rel.strength})</span>
+                            </div>
+                            <span className="text-muted text-[11px] font-sans">{rel.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 flex-wrap gap-2">
+                      <div className="text-[10px] font-mono text-muted">
+                        Proposal ID: <span className="text-white">{proposal.proposalId}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setCompletenessPrModalProposal(proposal)}
+                          className="gap-1 text-xs font-mono"
+                        >
+                          <GitPullRequest className="w-3.5 h-3.5" /> Pull Request Snippet
+                        </Button>
+
+                        {proposal.reviewStatus !== 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleCompletenessApprove(proposal.proposalId)}
+                            className="gap-1 text-xs font-mono bg-emerald-600 hover:bg-emerald-500 text-white"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                          </Button>
+                        )}
+
+                        {proposal.reviewStatus !== 'rejected' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCompletenessReject(proposal.proposalId)}
+                            className="gap-1 text-xs font-mono text-rose-300 hover:text-white hover:bg-rose-500/20 border-rose-500/30"
+                          >
+                            <XCircle className="w-3.5 h-3.5" /> Reject
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {/* TAB 1: GLOBAL ANNOUNCEMENT DISCOVERY & CONTINUOUS MONITORING */}
         {activeTab === 'announcements' && (
@@ -626,6 +1002,148 @@ export default function CkgProposalReviewPage() {
                         </div>
                       </div>
 
+                      {/* Universal Automatic Artwork Verification & Visual Preview Card */}
+                      <div className="p-4 rounded-xl bg-slate-950/60 border border-cyan-500/20 space-y-3 font-mono text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2">
+                          <div className="flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4 text-cyan-400" />
+                            <span className="text-xs font-bold text-white uppercase tracking-wider">
+                              Automatic Artwork Resolution & Visual Preview
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted uppercase">Artwork Status:</span>
+                            {(() => {
+                              const artStatus = c.artworkVerification?.status || (c.posterUrl.includes('placeholder') ? 'FALLBACK' : 'VERIFIED');
+                              const colorClass =
+                                artStatus === 'VERIFIED'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : artStatus === 'PARTIAL'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : artStatus === 'AMBIGUOUS'
+                                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                  : artStatus === 'FAILED'
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                  : 'bg-slate-500/20 text-slate-300 border-slate-500/40';
+                              return (
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold border flex items-center gap-1 ${colorClass}`}>
+                                  {artStatus === 'VERIFIED' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                                  {artStatus === 'PARTIAL' && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+                                  {artStatus === 'AMBIGUOUS' && <AlertTriangle className="w-3 h-3 text-purple-400" />}
+                                  {artStatus === 'FAILED' && <XCircle className="w-3 h-3 text-rose-400" />}
+                                  {artStatus}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Image Previews & Key Metadata Attributes */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                          {/* Poster Thumbnail */}
+                          <div className="md:col-span-2 flex flex-col items-center">
+                            <div className="relative group overflow-hidden rounded-lg border border-white/10 shadow-lg bg-black/50 aspect-[2/3] w-20 flex items-center justify-center">
+                              <img
+                                src={c.posterUrl}
+                                alt={`${c.title} Poster`}
+                                className="w-full h-full object-cover rounded-lg transition-transform group-hover:scale-105"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/placeholder-poster.svg';
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-muted mt-1 uppercase">Poster (w500)</span>
+                          </div>
+
+                          {/* Backdrop Thumbnail */}
+                          <div className="md:col-span-4 flex flex-col items-center">
+                            <div className="relative group overflow-hidden rounded-lg border border-white/10 shadow-lg bg-black/50 aspect-video w-44 flex items-center justify-center">
+                              <img
+                                src={c.backdropUrl}
+                                alt={`${c.title} Backdrop`}
+                                className="w-full h-full object-cover rounded-lg transition-transform group-hover:scale-105"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/placeholder-backdrop.svg';
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-muted mt-1 uppercase">Backdrop (w1280)</span>
+                          </div>
+
+                          {/* Verification Breakdown Grid */}
+                          <div className="md:col-span-6 grid grid-cols-2 gap-2 text-[11px] bg-black/40 p-3 rounded-lg border border-white/5">
+                            <div>
+                              <span className="text-muted block text-[10px] uppercase">TMDb Match</span>
+                              <span className="font-bold text-white">
+                                {c.artworkVerification?.tmdbMatchStatus || (c.tmdbId ? 'VERIFIED' : 'PENDING')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted block text-[10px] uppercase">TMDb ID</span>
+                              <span className="font-bold text-cyan-300">
+                                {c.tmdbId || c.artworkVerification?.tmdbId || 'N/A'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted block text-[10px] uppercase">Media Type</span>
+                              <span className="font-bold text-white capitalize">
+                                {c.mediaType === 'series' ? 'TV' : 'Movie'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted block text-[10px] uppercase">Release Date</span>
+                              <span className="font-bold text-slate-300">
+                                {c.releaseDate || 'TBA'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted block text-[10px] uppercase">Poster Status</span>
+                              <span className={`font-bold ${!c.posterUrl.includes('placeholder') ? 'text-emerald-300' : 'text-slate-400'}`}>
+                                {!c.posterUrl.includes('placeholder') ? 'VERIFIED' : 'FALLBACK'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted block text-[10px] uppercase">Backdrop Status</span>
+                              <span className={`font-bold ${!c.backdropUrl.includes('placeholder') ? 'text-emerald-300' : 'text-slate-400'}`}>
+                                {!c.backdropUrl.includes('placeholder') ? 'VERIFIED' : 'FALLBACK'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Direct URLs & Fallback Reason */}
+                        <div className="space-y-1 pt-1 border-t border-white/5 text-[11px]">
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="text-muted min-w-[70px]">Poster URL:</span>
+                            <a
+                              href={c.posterUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cyan-400 hover:underline truncate flex items-center gap-1"
+                            >
+                              {c.posterUrl} <ExternalLink className="w-2.5 h-2.5 inline" />
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="text-muted min-w-[70px]">Backdrop:</span>
+                            <a
+                              href={c.backdropUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cyan-400 hover:underline truncate flex items-center gap-1"
+                            >
+                              {c.backdropUrl} <ExternalLink className="w-2.5 h-2.5 inline" />
+                            </a>
+                          </div>
+                          {c.artworkVerification?.reason && (
+                            <div className="text-slate-300 italic pt-1 text-[10px] text-amber-300/80">
+                              ℹ️ {c.artworkVerification.reason}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       {/* Visual Change Diff Panel (for modifications) */}
                       {pkg.diff && (
                         <div className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2 font-mono text-xs">
@@ -706,6 +1224,11 @@ export default function CkgProposalReviewPage() {
               )}
             </div>
           </div>
+        )}
+
+        {/* TAB 3: TRAILER INTELLIGENCE & RECOMMENDATION EVIDENCE */}
+        {activeTab === 'trailer-intelligence' && (
+          <TrailerIntelligenceReviewTab onShowToast={showToast} />
         )}
 
         {/* TAB 2: CKG RELATIONSHIP PROPOSALS */}
@@ -1251,6 +1774,76 @@ export default function CkgProposalReviewPage() {
                   className="font-mono text-xs"
                 >
                   Save Field Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Completeness Pull Request Snippet Modal */}
+        {completenessPrModalProposal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl rounded-2xl bg-card border border-white/20 p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="text-xs font-mono font-bold text-amber-300 uppercase flex items-center gap-2">
+                  <GitPullRequest className="w-4 h-4" /> Catalog Integration PR Snippet
+                </div>
+                <button
+                  onClick={() => setCompletenessPrModalProposal(null)}
+                  className="text-muted hover:text-white font-mono text-xs"
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              <div className="space-y-3 font-mono text-xs">
+                <div className="text-muted text-[11px]">
+                  Copy and paste the following snippet into{' '}
+                  <code className="text-amber-300">src/data/franchises/{completenessPrModalProposal.franchiseId}.ts</code>:
+                </div>
+
+                <div className="relative">
+                  <pre className="p-4 rounded-xl bg-black/80 border border-white/10 text-emerald-300 text-[11px] overflow-x-auto max-h-72">
+{`// [PR] Missing Title: ${completenessPrModalProposal.title} (${completenessPrModalProposal.gapType})
+{
+  id: '${completenessPrModalProposal.proposalId}',
+  franchise_id: '${completenessPrModalProposal.franchiseId}',
+  title: '${completenessPrModalProposal.title.replace(/'/g, "\\'")}',
+  type: '${completenessPrModalProposal.mediaType}',
+  release_date: '${completenessPrModalProposal.releaseDate || '2026-12-31'}',
+  overview: '${completenessPrModalProposal.overview.replace(/'/g, "\\'")}',
+  runtime: 120,
+  rating: 7.5,
+  status: '${completenessPrModalProposal.lifecycleClassification.status}',
+  created_at: new Date().toISOString(),
+  theatrical_released: ${completenessPrModalProposal.lifecycleClassification.lifecycleCategory === 'THEATRICALLY_RELEASED'},
+  ott_available: false,
+  ${completenessPrModalProposal.tmdbId ? `tmdb_id: ${completenessPrModalProposal.tmdbId},` : ''}
+  ${completenessPrModalProposal.director ? `director: '${completenessPrModalProposal.director.replace(/'/g, "\\'")}',` : ''}
+}`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCompletenessPrModalProposal(null)}
+                  className="font-mono text-xs"
+                >
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    const snippet = `// [PR] Missing Title: ${completenessPrModalProposal.title} (${completenessPrModalProposal.gapType})\n{\n  id: '${completenessPrModalProposal.proposalId}',\n  franchise_id: '${completenessPrModalProposal.franchiseId}',\n  title: '${completenessPrModalProposal.title.replace(/'/g, "\\'")}',\n  type: '${completenessPrModalProposal.mediaType}',\n  release_date: '${completenessPrModalProposal.releaseDate || '2026-12-31'}',\n  overview: '${completenessPrModalProposal.overview.replace(/'/g, "\\'")}',\n  runtime: 120,\n  rating: 7.5,\n  status: '${completenessPrModalProposal.lifecycleClassification.status}',\n  created_at: new Date().toISOString(),\n  theatrical_released: ${completenessPrModalProposal.lifecycleClassification.lifecycleCategory === 'THEATRICALLY_RELEASED'},\n  ott_available: false,\n  ${completenessPrModalProposal.tmdbId ? `tmdb_id: ${completenessPrModalProposal.tmdbId},` : ''}\n  ${completenessPrModalProposal.director ? `director: '${completenessPrModalProposal.director.replace(/'/g, "\\'")}',` : ''}\n}`;
+                    navigator.clipboard?.writeText(snippet);
+                    showToast('PR snippet copied to clipboard!', 'success');
+                  }}
+                  className="gap-1 font-mono text-xs bg-amber-600 hover:bg-amber-500 text-white"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy Snippet
                 </Button>
               </div>
             </div>

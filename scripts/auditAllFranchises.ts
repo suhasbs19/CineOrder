@@ -4,7 +4,7 @@ import { resolveFranchiseArtwork } from '../src/lib/imageResolver';
 import { validateFranchiseVisualIdentities } from './verifyFranchiseVisualIdentity';
 
 console.log('========================================================================');
-console.log('              CINEORDER 16-FRANCHISE VISUAL IDENTITY AUDIT               ');
+console.log('            CINEORDER GLOBAL FRANCHISE VISUAL IDENTITY AUDIT            ');
 console.log('========================================================================\n');
 
 for (const f of allFranchises) {

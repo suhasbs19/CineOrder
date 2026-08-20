@@ -8,7 +8,7 @@ This document serves as the authoritative, step-by-step developer specification 
 
 CineOrder is a **data-driven** cinematic universe platform. Adding a new franchise requires **only supplying canonical data** and does **not** require modifying runtime traversal engines or building custom UI components.
 
-The application automatically handles:
+The application automatically handles across all registered franchises:
 - Franchise hub rendering (`/franchise/:slug`)
 - Multi-order watch sequencing (Release, Chronological, Recommended)
 - Interactive Story Graph Preparation Guides
@@ -17,6 +17,8 @@ The application automatically handles:
 - Lifecycle tracking & countdowns (`/upcoming`)
 - Image resolution & fallback protection
 - Global release gate verification
+
+All registered franchises exported from `src/data/franchises/index.ts` are dynamically discovered across all audit engines, proposal monitors, and UI components without hard-coded limits.
 
 ---
 

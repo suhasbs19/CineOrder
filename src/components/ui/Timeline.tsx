@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZoomIn, ZoomOut, RotateCcw, Check, Film, Tv, Star, Clock } from 'lucide-react';
 import { cn, formatRuntime, formatYear } from '@/lib/utils';
+import { sortWatchOrdersByReleaseDate } from '@/lib/releaseOrdering';
+import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
 import type { WatchOrder } from '@/types';
 
 import { SafeImage } from './SafeImage';
@@ -22,10 +24,12 @@ export function InteractiveTimeline({ orders, watchedIds, onToggleWatched }: Tim
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
-  const sortedOrders = useMemo(
-    () => [...orders].sort((a, b) => a.position - b.position),
-    [orders]
-  );
+  const sortedOrders = useMemo(() => {
+    const isRelease = orders.some((o) => o.order_type === 'release');
+    return isRelease
+      ? sortWatchOrdersByReleaseDate(orders)
+      : [...orders].sort((a, b) => a.position - b.position);
+  }, [orders]);
 
   const selectedContent = sortedOrders.find((o) => o.content_id === selectedId)?.content;
 
@@ -251,17 +255,27 @@ export function InteractiveTimeline({ orders, watchedIds, onToggleWatched }: Tim
                     View Details
                   </button>
                   {onToggleWatched && (
-                    <button
-                      onClick={() => onToggleWatched(selectedContent.id)}
-                      className={cn(
-                        'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                        watchedIds.has(selectedContent.id)
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-white/10 text-white hover:bg-white/20'
-                      )}
-                    >
-                      {watchedIds.has(selectedContent.id) ? '✓ Watched' : 'Mark Watched'}
-                    </button>
+                    isTheatricallyUpcoming(selectedContent) ? (
+                      <button
+                        disabled
+                        className="px-4 py-1.5 rounded-lg text-sm font-medium bg-white/5 text-muted cursor-not-allowed border border-white/10"
+                        title="This title has not premiered yet and cannot be marked as watched."
+                      >
+                        Not Yet Released
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onToggleWatched(selectedContent.id)}
+                        className={cn(
+                          'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                          watchedIds.has(selectedContent.id)
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-white/10 text-white hover:bg-white/20'
+                        )}
+                      >
+                        {watchedIds.has(selectedContent.id) ? '✓ Watched' : 'Mark Watched'}
+                      </button>
+                    )
                   )}
                 </div>
               </div>

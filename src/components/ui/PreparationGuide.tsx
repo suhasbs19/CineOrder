@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Layers,
   GitCommit,
-  AlertTriangle,
   CheckCircle,
   Network,
   Users,
@@ -17,6 +16,9 @@ import {
   X,
   Sparkles,
   Tv,
+  ShieldCheck,
+  ExternalLink,
+  BookmarkCheck,
 } from 'lucide-react';
 import { SafeImage } from '@/components/ui/SafeImage';
 import { Button } from '@/components/ui/Button';
@@ -25,10 +27,16 @@ import { StoryGraphNodeHierarchy } from '@/components/ui/StoryGraphNodeHierarchy
 import { cn, formatYear } from '@/lib/utils';
 import { useWatchStore } from '@/store/watchStore';
 import { cineOrderKnowledgeGraph, type StoryEdge } from '@/data/cineOrderKnowledgeGraph';
-import { executeKnowledgeGraphTraversal, type KnowledgeGraphTraversalResult } from '@/lib/storyKnowledgeGraphEngine';
+import type { KnowledgeGraphTraversalResult } from '@/lib/storyKnowledgeGraphEngine';
+import {
+  resolvePreparationGuide,
+  deduplicateRecommendationList,
+} from '@/lib/officialPreparationOverrideService';
 import type { CategoryType } from '@/types/preparation';
 import { franchises } from '@/data/franchises';
 import { getLifecycleCategory } from '@/lib/metadataRefresh';
+import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export function getFranchiseBadgeLabel(franchiseId?: string): string {
   if (!franchiseId) return 'Unknown Franchise';
@@ -129,24 +137,39 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
     setShowDetails((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const graphResult = useMemo(() => {
-    if (providedGraphResult) return providedGraphResult;
+  const guideData = useMemo(() => {
+    if (providedGraphResult) {
+      return {
+        ...providedGraphResult,
+        mode: 'GRAPH_RECOMMENDATION' as const,
+      };
+    }
     if (contentId) {
       const watchedList = Object.keys(watchHistory).filter((k) => watchHistory[k]);
-      return executeKnowledgeGraphTraversal(contentId, watchedList);
+      return resolvePreparationGuide(contentId, watchedList);
     }
     return null;
   }, [providedGraphResult, contentId, watchHistory]);
 
-  if (!graphResult) {
+  if (!guideData) {
     return null;
   }
+
+  const graphResult = guideData;
+  const isOfficialOverride = guideData.mode === 'OFFICIAL_OVERRIDE';
 
   const remainingCritical = graphResult.mustWatch.filter((r) => !r.isWatched).length;
   const remainingRecommended = graphResult.recommended.filter((r) => !r.isWatched).length;
   const remainingOptional = graphResult.optional.filter((r) => !r.isWatched).length;
 
   const getPriorityBadge = (category: CategoryType) => {
+    if (isOfficialOverride) {
+      return (
+        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+          <BookmarkCheck className="w-3 h-3" /> OFFICIAL PREREQUISITE
+        </span>
+      );
+    }
     switch (category) {
       case 'must_watch':
         return (
@@ -184,6 +207,19 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
 
   const availableTabs = useMemo(() => {
     const tabs: { key: CategoryType; label: string; count: number; watchedCount: number; badgeColor: string }[] = [];
+
+    if (isOfficialOverride) {
+      const watched = (guideData.officialItems || []).filter((r) => r.isWatched).length;
+      tabs.push({
+        key: 'must_watch',
+        label: 'Official Studio Watchlist',
+        count: guideData.officialItems?.length || 0,
+        watchedCount: watched,
+        badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+      });
+      return tabs;
+    }
+
     if (graphResult.mustWatch.length > 0) {
       const watched = graphResult.mustWatch.filter((r) => r.isWatched).length;
       tabs.push({
@@ -243,13 +279,18 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
       });
     }
     return tabs;
-  }, [graphResult, isUpcoming]);
+  }, [graphResult, isUpcoming, isOfficialOverride, guideData]);
 
   const effectiveTab = availableTabs.some((t) => t.key === activeTab)
     ? activeTab
     : availableTabs[0]?.key || 'must_watch';
 
   const currentTabItems = useMemo(() => {
+    if (isOfficialOverride) {
+      // In official override mode, preserve exact official order without sorting by release date
+      return deduplicateRecommendationList(guideData.officialPreparationItems || guideData.officialItems || []);
+    }
+
     let items = graphResult.mustWatch;
     if (effectiveTab === 'must_watch') {
       items = graphResult.mustWatch;
@@ -265,16 +306,11 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
       items = graphResult.postCreditContext || [];
     }
 
-    // Sort chronologically ascending by release date (earliest release first)
-    return [...items].sort((a, b) => {
-      const dateA = a.content.release_date || '';
-      const dateB = b.content.release_date || '';
-      if (dateA !== dateB) {
-        return dateA.localeCompare(dateB);
-      }
-      return 0;
-    });
-  }, [effectiveTab, graphResult, isUpcoming]);
+    const cleanItems = deduplicateRecommendationList(items);
+
+    // Sort chronologically ascending by canonical release date (earliest release first)
+    return [...cleanItems].sort((a, b) => compareReleaseDates(a.content, b.content));
+  }, [effectiveTab, graphResult, isUpcoming, isOfficialOverride, guideData]);
 
   const filteredTabItems = currentTabItems;
 
@@ -321,12 +357,24 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
       <div className="p-6 rounded-2xl bg-surface/80 border border-white/10 backdrop-blur-md space-y-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Network className="w-6 h-6 text-primary animate-pulse" />
-              <h2 className="text-2xl font-black text-white">Narrative Knowledge Graph Explorer</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
-                CKG Engine v1.0
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {isOfficialOverride ? (
+                <ShieldCheck className="w-6 h-6 text-emerald-400 animate-pulse" />
+              ) : (
+                <Network className="w-6 h-6 text-primary animate-pulse" />
+              )}
+              <h2 className="text-2xl font-black text-white">
+                {isOfficialOverride ? 'Official Preparation' : 'Narrative Knowledge Graph Explorer'}
+              </h2>
+              {isOfficialOverride ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                  <BookmarkCheck className="w-3 h-3 text-emerald-400" /> OFFICIAL STUDIO OVERRIDE
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
+                  CKG Engine v1.0
+                </span>
+              )}
               {isUpcoming && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400" /> Pre-Release Story Preparation
@@ -344,12 +392,13 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
               )}
             </div>
             <p className="text-xs text-muted">
-              Directed narrative graph traversal for{' '}
-              <span className="text-white font-semibold">{graphResult.targetContent.title}</span>.
+              {isOfficialOverride
+                ? `Authoritative studio preparation list verified from ${guideData.officialSource?.sourcePublisher}.`
+                : `Directed narrative graph traversal for ${graphResult.targetContent.title}.`}
             </p>
           </div>
 
-          {/* View Mode Switcher (Graph is Hero) */}
+          {/* View Mode Switcher */}
           <div className="flex items-center gap-1.5 p-1 bg-surface border border-white/10 rounded-xl self-start sm:self-auto">
             <button
               type="button"
@@ -379,46 +428,128 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
           </div>
         </div>
 
+        {/* Official Source Metadata Card */}
+        {isOfficialOverride && guideData.officialSource && (
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-emerald-300">Verified Publisher:</span>
+                <span className="font-semibold text-white">{guideData.officialSource.sourcePublisher}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  v{guideData.officialSource.version}
+                </span>
+                <span className="text-emerald-400/80 text-[11px]">
+                  • Published: {guideData.officialSource.publicationDate}
+                </span>
+              </div>
+              {guideData.officialSource.sourceUrl && (
+                <a
+                  href={guideData.officialSource.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:text-emerald-100 underline decoration-emerald-400/50 hover:decoration-emerald-200 transition-colors"
+                >
+                  View Official Studio Release <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+            {guideData.officialSource.officialStatement && (
+              <p className="text-xs text-emerald-100/90 italic bg-black/20 p-2.5 rounded-lg border border-emerald-500/20">
+                "{guideData.officialSource.officialStatement}"
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Entry Point Banner */}
         {graphResult.isEntryPoint && (
-          <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 space-y-1">
-            <div className="flex items-center gap-2 text-sm font-black text-emerald-300">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>Ready to Watch — Standalone Entry Point</span>
+          <div
+            className={cn(
+              'p-4 rounded-xl border space-y-1',
+              isUpcoming
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-200'
+                : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200'
+            )}
+          >
+            <div
+              className={cn(
+                'flex items-center gap-2 text-sm font-black',
+                isUpcoming ? 'text-amber-300' : 'text-emerald-300'
+              )}
+            >
+              {isUpcoming ? (
+                <Sparkles className="w-4 h-4 text-amber-400" />
+              ) : (
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+              )}
+              <span>
+                {isUpcoming
+                  ? 'Upcoming — Story Preparation Available'
+                  : 'Ready to Watch — Standalone Entry Point'}
+              </span>
             </div>
-            <p className="text-xs text-emerald-100 font-medium">
-              {graphResult.recommended.length > 0 || graphResult.optional.length > 0
+            <p
+              className={cn(
+                'text-xs font-medium',
+                isUpcoming ? 'text-amber-100' : 'text-emerald-100'
+              )}
+            >
+              {isUpcoming
+                ? graphResult.recommended.length > 0 || graphResult.optional.length > 0
+                  ? 'No previous movies are required before this upcoming title. Recommended background viewing provides optional character and world context before release.'
+                  : 'This upcoming title is an excellent standalone entry point. No prior movies or series are required.'
+                : graphResult.recommended.length > 0 || graphResult.optional.length > 0
                 ? 'No previous movies are required to understand the main feature story. Recommended titles provide additional character and world context.'
                 : 'This title is an excellent entry point. No previous movies or TV series are required.'}
             </p>
           </div>
         )}
 
-        {/* Timeline Warning Banner */}
-        {!graphResult.isEntryPoint && graphResult.timelineWarnings.length > 0 && graphResult.timelineWarnings[0] && (
+        {/* Timeline / Readiness Warning Banner */}
+        {!graphResult.isEntryPoint && (
           <div
             className={cn(
               'p-3.5 rounded-xl border flex items-center gap-3 text-xs',
-              graphResult.timelineWarnings[0].startsWith('⚠️')
+              isOfficialOverride
+                ? graphResult.storyReadinessPercentage === 100
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+                : isUpcoming
                 ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                 : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
             )}
           >
-            {graphResult.timelineWarnings[0].startsWith('⚠️') ? (
-              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            {isOfficialOverride ? (
+              <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            ) : isUpcoming ? (
+              <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0" />
             ) : (
               <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             )}
-            <p className="font-semibold">{graphResult.timelineWarnings[0]}</p>
+            <p className="font-semibold">
+              {isOfficialOverride
+                ? graphResult.storyReadinessPercentage === 100
+                  ? '✨ Official Preparation Complete. All studio-designated prerequisites watched!'
+                  : `📋 Official Studio Watchlist: ${graphResult.watchedCount} of ${graphResult.totalPrerequisitesCount} prerequisites watched.`
+                : isUpcoming
+                ? '✨ Story Preparation Available — catch up before premiere.'
+                : '✅ Ready to Watch.'}
+            </p>
           </div>
         )}
 
         {/* Curated Editorial Narrative Journey Header */}
         <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-surface/60 to-surface/60 border border-amber-500/20 flex flex-col gap-1 text-xs">
           <div className="flex items-center gap-2 text-amber-400 font-bold uppercase tracking-wider text-xs">
-            <Sparkles className="w-4 h-4 text-amber-400" />
+            {isOfficialOverride ? (
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-amber-400" />
+            )}
             <span>
-              {isUpcoming
+              {isOfficialOverride
+                ? 'Official Studio Watchlist'
+                : isUpcoming
                 ? 'Pre-Release Story Preparation'
                 : isTheatrical
                 ? 'Theatrical Catch-Up Guide'
@@ -426,7 +557,9 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
             </span>
           </div>
           <p className="text-slate-300 text-xs leading-relaxed">
-            {isUpcoming
+            {isOfficialOverride
+              ? `Officially published preparation guide directly from ${guideData.officialSource?.sourcePublisher}. CineOrder strictly adheres to official studio authority.`
+              : isUpcoming
               ? 'Professionally curated pre-release recommendations designed to prepare your story context, character continuity, and emotional payoff before this title premieres in theaters.'
               : isTheatrical
               ? 'Professionally curated recommendations to catch up on critical character arcs and narrative backstory before watching this movie in theaters.'
@@ -438,13 +571,21 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
             <span className="text-[10px] text-muted font-bold uppercase">
-              {isUpcoming ? 'Story Readiness' : isTheatrical ? 'Catch-Up Readiness' : 'Viewing Readiness'}
+              {isOfficialOverride
+                ? 'Official Readiness'
+                : isUpcoming
+                ? 'Story Preparation Readiness'
+                : isTheatrical
+                ? 'Catch-Up Readiness'
+                : 'Viewing Readiness'}
             </span>
             <span className="text-xl font-black text-gradient mt-1">{graphResult.storyReadinessPercentage}%</span>
           </div>
 
           <div className="p-3.5 rounded-xl bg-surface/50 border border-white/5 flex flex-col justify-between">
-            <span className="text-[10px] text-muted font-bold uppercase">Must Watch</span>
+            <span className="text-[10px] text-muted font-bold uppercase">
+              {isOfficialOverride ? 'Official Prereqs' : 'Must Watch'}
+            </span>
             <span className="text-xl font-black text-red-400 mt-1">
               {remainingCritical} <span className="text-xs font-normal text-muted">Left • {graphResult.mustWatch.length} Total</span>
             </span>
@@ -533,7 +674,7 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
       {/* STORY GRAPH TREE VIEW MODE (HERO VISUALIZATION) */}
       {viewMode === 'graph' ? (
         <StoryGraphNodeHierarchy
-          graphResult={graphResult}
+          graphResult={graphResult as any}
           onToggleWatched={handleToggleWatched}
           onNavigate={(path) => navigate(path)}
         />
@@ -665,18 +806,30 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
                               </div>
                             </div>
 
-                            <Button
-                              variant={rec.isWatched ? 'secondary' : 'outline'}
-                              size="sm"
-                              onClick={() => handleToggleWatched(c.id)}
-                              className={cn(
-                                'text-xs gap-1.5 py-1 px-2.5 cursor-pointer',
-                                rec.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
-                              )}
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              {rec.isWatched ? 'Watched' : 'Mark Watched'}
-                            </Button>
+                            {isTheatricallyUpcoming(c) ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled
+                                className="text-xs py-1 px-2.5 opacity-60 cursor-not-allowed border border-white/10"
+                                title="This title has not premiered yet and cannot be marked as watched."
+                              >
+                                Not Yet Released
+                              </Button>
+                            ) : (
+                              <Button
+                                variant={rec.isWatched ? 'secondary' : 'outline'}
+                                size="sm"
+                                onClick={() => handleToggleWatched(c.id)}
+                                className={cn(
+                                  'text-xs gap-1.5 py-1 px-2.5 cursor-pointer',
+                                  rec.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                )}
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                {rec.isWatched ? 'Watched' : 'Mark Watched'}
+                              </Button>
+                            )}
                           </div>
 
                           {/* LEVEL 2: Concise Rationale (Max 2 lines) */}
@@ -788,6 +941,126 @@ export function PreparationGuide({ contentId, graphResult: providedGraphResult }
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* EXTRA CONTENT: CineOrder Recommendations (Partitioned Section) */}
+      {isOfficialOverride && guideData.cineOrderExtraContent && guideData.cineOrderExtraContent.length > 0 && (
+        <div className="mt-10 p-6 rounded-2xl bg-surface/70 border border-amber-500/20 backdrop-blur-md space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  EXTRA CONTENT
+                </span>
+                <h3 className="text-xl font-black text-white">CineOrder Recommendations</h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/10 text-muted">
+                  {deduplicateRecommendationList(guideData.cineOrderExtraContent || []).length}{' '}
+                  {deduplicateRecommendationList(guideData.cineOrderExtraContent || []).length === 1 ? 'Title' : 'Titles'}
+                </span>
+              </div>
+              <p className="text-xs text-muted leading-relaxed max-w-3xl">
+                Independent story-graph recommendations discovered by CineOrder's narrative intelligence engine. These titles provide valuable lore and character context, but are <strong className="text-amber-300">not part of the official studio watchlist</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {deduplicateRecommendationList(guideData.cineOrderExtraContent || []).map((rec) => {
+              const watched = watchHistory[rec.content.id];
+              return (
+                <div
+                  key={rec.content.id}
+                  className="flex gap-3.5 p-3.5 rounded-xl bg-card border border-white/10 hover:border-amber-500/30 transition-all duration-200"
+                >
+                  <div
+                    onClick={() => navigate(`/movie/${rec.content.id}`)}
+                    className="w-16 sm:w-20 aspect-[2/3] rounded-lg overflow-hidden flex-shrink-0 cursor-pointer group border border-white/10"
+                  >
+                    <SafeImage
+                      src={rec.content.poster_url}
+                      alt={rec.content.title}
+                      aspectRatio="poster"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4
+                          onClick={() => navigate(`/movie/${rec.content.id}`)}
+                          className="text-xs sm:text-sm font-bold text-white truncate cursor-pointer hover:text-primary transition-colors"
+                        >
+                          {rec.content.title}
+                        </h4>
+                        <span
+                          className={cn(
+                            'px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex-shrink-0 border',
+                            rec.category === 'must_watch'
+                              ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                              : rec.category === 'recommended'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                          )}
+                        >
+                          {rec.category === 'must_watch'
+                            ? 'Must Watch'
+                            : rec.category === 'recommended'
+                            ? 'Recommended'
+                            : 'Extra Context'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted">{formatYear(rec.content.release_date)}</p>
+                      <p className="text-[11px] text-muted-light line-clamp-2 leading-snug">
+                        {rec.shortReason || rec.reason}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setInspectedItem({
+                            rec,
+                            edge: findEdgeMetadata(rec.content.id, graphResult.targetContent.id),
+                          })
+                        }
+                        className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded border border-primary/20 transition-colors"
+                      >
+                        <Info className="w-3 h-3" />
+                        <span>Why Inspector</span>
+                      </button>
+
+                      {isTheatricallyUpcoming(rec.content) ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled
+                          className="h-6 text-[10px] px-2.5 py-0 opacity-60 cursor-not-allowed border border-white/10"
+                          title="This title has not premiered yet and cannot be marked as watched."
+                        >
+                          Not Yet Released
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant={watched ? 'secondary' : 'outline'}
+                          className={cn(
+                            'h-6 text-[10px] px-2.5 py-0 cursor-pointer',
+                            watched && 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          )}
+                          onClick={() => handleToggleWatched(rec.content.id)}
+                        >
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          {watched ? 'Watched' : 'Mark Watched'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

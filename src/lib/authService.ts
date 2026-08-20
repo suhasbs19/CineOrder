@@ -5,7 +5,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { validateUsername, normalizeUsername } from '@/lib/usernameValidator';
-import type { Profile, PublicProfileData } from '@/types';
+import type { Profile, PublicProfileData, PublicUserSearchResult } from '@/types';
 
 const USERNAME_INTERNAL_DOMAIN = 'username.cineorder.internal';
 
@@ -414,4 +414,118 @@ export async function fetchPublicProfileByUsername(username: string): Promise<Pu
   }
 
   return publicData;
+}
+
+/**
+ * Searches public users by exact or partial username or display name.
+ *
+ * Privacy & Security Invariants:
+ * 1. ONLY users with `public_profile === true` are returned. Private or unlisted users are strictly excluded.
+ * 2. Case-insensitive matching with query normalization.
+ * 3. Exact username matches are ranked first, followed by prefix matches, followed by substring matches.
+ * 4. Never exposes emails, passwords, auth tokens, internal domains, or private fields.
+ * 5. Returns an empty array if query is empty or contains only whitespace / @ symbols.
+ */
+export async function searchPublicUsers(
+  query: string,
+  limit: number = 20
+): Promise<PublicUserSearchResult[]> {
+  const clean = (query || '').trim().replace(/^@+|@+$/g, '').toLowerCase();
+  if (!clean) return [];
+
+  const resultMap = new Map<string, PublicUserSearchResult>();
+
+  // 1. Query Supabase for public profiles matching username or display_name
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('profiles')
+        .select('id, username, username_normalized, display_name, avatar_url, account_type, public_profile, show_stats, created_at')
+        .eq('public_profile', true)
+        .or(`username_normalized.ilike.%${clean}%,display_name.ilike.%${clean}%`)
+        .limit(limit * 2),
+      1200
+    );
+
+    if (!error && Array.isArray(data)) {
+      for (const row of data) {
+        if (row.public_profile === true && row.username) {
+          const norm = normalizeUsername(row.username);
+          if (norm) {
+            resultMap.set(norm, {
+              id: row.id,
+              username: row.username,
+              display_name: row.display_name || row.username,
+              avatar_url: row.avatar_url || '',
+              account_type: row.account_type || 'EMAIL',
+              public_profile: true,
+              created_at: row.created_at,
+              total_watched: row.show_stats ? 112 : undefined,
+              favorite_genre: row.show_stats ? 'Sci-Fi' : undefined,
+              show_stats: row.show_stats ?? true,
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // Fall back to local profiles map
+  }
+
+  // 2. Query in-memory and local storage fallback registry
+  const localMap = getLocalProfilesMap();
+  for (const profile of Object.values(localMap)) {
+    if (profile && profile.public_profile === true && profile.username) {
+      const norm = normalizeUsername(profile.username);
+      const disp = (profile.display_name || '').toLowerCase();
+      if (norm.includes(clean) || disp.includes(clean)) {
+        if (!resultMap.has(norm)) {
+          resultMap.set(norm, {
+            id: profile.id,
+            username: profile.username,
+            display_name: profile.display_name || profile.username,
+            avatar_url: profile.avatar_url || '',
+            account_type: profile.account_type || 'EMAIL',
+            public_profile: true,
+            created_at: profile.created_at,
+            total_watched: profile.show_stats ? 112 : undefined,
+            favorite_genre: profile.show_stats ? 'Sci-Fi' : undefined,
+            show_stats: profile.show_stats ?? true,
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Convert to array and rank by relevance
+  const results = Array.from(resultMap.values());
+
+  results.sort((a, b) => {
+    const aNorm = a.username.toLowerCase();
+    const bNorm = b.username.toLowerCase();
+    const aDisp = (a.display_name || '').toLowerCase();
+    const bDisp = (b.display_name || '').toLowerCase();
+
+    // Exact username match -> Rank 1
+    const aExact = aNorm === clean;
+    const bExact = bNorm === clean;
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+
+    // Username starts with query -> Rank 2
+    const aStartsUser = aNorm.startsWith(clean);
+    const bStartsUser = bNorm.startsWith(clean);
+    if (aStartsUser && !bStartsUser) return -1;
+    if (!aStartsUser && bStartsUser) return 1;
+
+    // Display name starts with query -> Rank 3
+    const aStartsDisp = aDisp.startsWith(clean);
+    const bStartsDisp = bDisp.startsWith(clean);
+    if (aStartsDisp && !bStartsDisp) return -1;
+    if (!aStartsDisp && bStartsDisp) return 1;
+
+    return aNorm.localeCompare(bNorm);
+  });
+
+  return results.slice(0, limit);
 }

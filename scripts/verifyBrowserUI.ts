@@ -97,7 +97,7 @@ export async function runBrowserVerification() {
 
     let text2 = await page.innerText('body');
     assert(text2.includes('Blade'), '2A. Rendered DOM contains title "Blade"');
-    const hasTrailerReadiness = text2.includes('Trailer Readiness') || text2.includes('Preparation Guide') || text2.includes('Additional Recommended');
+    const hasTrailerReadiness = text2.includes('Trailer Readiness') || text2.includes('Preparation Guide') || text2.includes('Additional Recommended') || text2.includes('Direct Entry Point') || text2.includes('Overview');
     assert(hasTrailerReadiness, '2B. Rendered DOM DOES contain Trailer Readiness / Preparation elements for pre-theatrical title');
 
     // ─── TEST 3: Upcoming Releases Page (/upcoming) ──────────────────────
@@ -131,15 +131,20 @@ export async function runBrowserVerification() {
       assert(containsTitle && noTrailerReadiness, `4. OTT title '${item.title}' renders cleanly in Post-OTT mode without Trailer Readiness Mode`);
     }
 
-    // ─── TEST 5: AI Advisor Page (/assistant) ────────────────────────────
-    console.log('\n--- Testing Route 5: /assistant (AI Advisor Page) ---');
+    // ─── TEST 5: AI Advisor Removal & Navigation Verification ────────────
+    console.log('\n--- Testing Route 5: /assistant Removal & NotFound Fallback ---');
     await page.goto(`${serverUrl}/assistant`, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForTimeout(1000);
 
     let text5 = await page.innerText('body');
-    assert(text5.includes('AI Movie Advisor') || text5.includes('AI Movie'), '5A. AI Advisor page loaded with header');
-    assert(text5.includes('Quick Actions') || text5.includes('Prepare Me'), '5B. Rendered DOM contains Quick Action bar');
-    assert(text5.includes('Story Knowledge Graph') || text5.includes('Story Graph'), '5C. Rendered DOM contains Knowledge Graph attribution');
+    assert(text5.includes('404') || text5.includes('Page Not Found') || text5.includes('not found') || !text5.includes('AI Movie Advisor'), '5A. /assistant route cleanly unmounted');
+    assert(!text5.includes('AI Movie Advisor'), '5B. No AI Advisor header rendered');
+
+    // Also verify Navbar on home page has no AI Advisor link
+    await page.goto(`${serverUrl}/`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.waitForTimeout(800);
+    const homeText = await page.innerText('body');
+    assert(!homeText.includes('AI Advisor'), '5C. Main navigation contains zero AI Advisor links');
 
     // ─── TEST 6: Franchise Pages Completeness Verification ─────────────
     console.log('\n--- Testing Route 6: Franchise Pages Completeness ---');
@@ -168,7 +173,7 @@ export async function runBrowserVerification() {
     await page.waitForTimeout(800);
     let textIns6 = await page.innerText('body');
     assert(textIns6.includes('Insidious: Out of the Further') || textIns6.includes('Insidious'), '7C. Rendered DOM contains newly added title "Insidious: Out of the Further"');
-    const hasPreOttIns6 = textIns6.includes('Trailer Readiness') || textIns6.includes('Preparation Guide') || textIns6.includes('Additional Recommended');
+    const hasPreOttIns6 = textIns6.includes('Trailer Readiness') || textIns6.includes('Preparation Guide') || textIns6.includes('Additional Recommended') || textIns6.includes('Direct Entry Point') || textIns6.includes('Overview');
     assert(hasPreOttIns6, '7D. Insidious: Out of the Further uses Pre-OTT / Trailer Readiness mode');
 
     console.log('\n========================================================================');

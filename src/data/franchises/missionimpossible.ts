@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const missionImpossibleFranchise: Franchise = {
   id: 'mission-impossible',
@@ -145,16 +146,17 @@ export const missionImpossibleContent: Content[] = [
   }),
 ];
 
-export const missionImpossibleWatchOrders: WatchOrder[] = [
-  // Release Order
-  buildWatchOrder({ id: 'mi-rel-1', franchise_id: 'mission-impossible', content_id: 'mi-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'mi-rel-2', franchise_id: 'mission-impossible', content_id: 'mi-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'mi-rel-3', franchise_id: 'mission-impossible', content_id: 'mi-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'mi-rel-4', franchise_id: 'mission-impossible', content_id: 'mi-gp', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'mi-rel-5', franchise_id: 'mission-impossible', content_id: 'mi-rn', order_type: 'release', position: 5 }),
-  buildWatchOrder({ id: 'mi-rel-6', franchise_id: 'mission-impossible', content_id: 'mi-fallout', order_type: 'release', position: 6 }),
-  buildWatchOrder({ id: 'mi-rel-7', franchise_id: 'mission-impossible', content_id: 'mi-dr1', order_type: 'release', position: 7 }),
-  buildWatchOrder({ id: 'mi-rel-8', franchise_id: 'mission-impossible', content_id: 'mi-dr2', order_type: 'release', position: 8 }),
+const sortedMiForRelease = [...missionImpossibleContent].sort(compareReleaseDates);
+
+export const missionImpossibleWatchOrders: WatchOrder[] = sortedMiForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `mi-rel-${index + 1}`,
+    franchise_id: 'mission-impossible',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   // Chronological Order
   buildWatchOrder({ id: 'mi-chr-1', franchise_id: 'mission-impossible', content_id: 'mi-1', order_type: 'chronological', position: 1 }),
@@ -175,7 +177,7 @@ export const missionImpossibleWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'mi-rec-6', franchise_id: 'mission-impossible', content_id: 'mi-fallout', order_type: 'recommended', position: 6 }),
   buildWatchOrder({ id: 'mi-rec-7', franchise_id: 'mission-impossible', content_id: 'mi-dr1', order_type: 'recommended', position: 7 }),
   buildWatchOrder({ id: 'mi-rec-8', franchise_id: 'mission-impossible', content_id: 'mi-dr2', order_type: 'recommended', position: 8 }),
-];
+]);
 
 export const franchise = missionImpossibleFranchise;
 export const content = missionImpossibleContent;

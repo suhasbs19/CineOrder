@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const xmenFranchise: Franchise = {
   id: 'x-men',
@@ -231,7 +232,9 @@ export const xmenContent: Content[] = [
   }),
 ];
 
-export const xmenWatchOrders: WatchOrder[] = xmenContent.map((item, index) =>
+const sortedXmenForRelease = [...xmenContent].sort(compareReleaseDates);
+
+export const xmenWatchOrders: WatchOrder[] = sortedXmenForRelease.map((item, index) =>
   buildWatchOrder({
     id: `xmen-rel-${index + 1}`,
     franchise_id: 'x-men',
@@ -240,7 +243,7 @@ export const xmenWatchOrders: WatchOrder[] = xmenContent.map((item, index) =>
     position: index + 1,
   })
 ).concat(
-  xmenContent.map((item, index) =>
+  sortedXmenForRelease.map((item, index) =>
     buildWatchOrder({
       id: `xmen-chr-${index + 1}`,
       franchise_id: 'x-men',

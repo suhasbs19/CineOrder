@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const lotrFranchise: Franchise = {
   id: 'lord-of-the-rings',
@@ -102,13 +103,17 @@ export const lotrContent: Content[] = [
   }),
 ];
 
-export const lotrWatchOrders: WatchOrder[] = [
-  // Release Order
-  buildWatchOrder({ id: 'lotr-rel-1', franchise_id: 'lord-of-the-rings', content_id: 'lotr-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'lotr-rel-2', franchise_id: 'lord-of-the-rings', content_id: 'lotr-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'lotr-rel-3', franchise_id: 'lord-of-the-rings', content_id: 'lotr-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'lotr-rel-4', franchise_id: 'lord-of-the-rings', content_id: 'lotr-rop', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'lotr-rel-5', franchise_id: 'lord-of-the-rings', content_id: 'lotr-rohirrim', order_type: 'release', position: 5 }),
+const sortedLotrForRelease = [...lotrContent].sort(compareReleaseDates);
+
+export const lotrWatchOrders: WatchOrder[] = sortedLotrForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `lotr-rel-${index + 1}`,
+    franchise_id: 'lord-of-the-rings',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   // Chronological Order
   buildWatchOrder({ id: 'lotr-chr-1', franchise_id: 'lord-of-the-rings', content_id: 'lotr-rop', order_type: 'chronological', position: 1, notes: 'Set during the Second Age of Middle-earth.' }),
@@ -123,7 +128,7 @@ export const lotrWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'lotr-rec-3', franchise_id: 'lord-of-the-rings', content_id: 'lotr-3', order_type: 'recommended', position: 3 }),
   buildWatchOrder({ id: 'lotr-rec-4', franchise_id: 'lord-of-the-rings', content_id: 'lotr-rohirrim', order_type: 'recommended', position: 4 }),
   buildWatchOrder({ id: 'lotr-rec-5', franchise_id: 'lord-of-the-rings', content_id: 'lotr-rop', order_type: 'recommended', position: 5 }),
-];
+]);
 
 export const franchise = lotrFranchise;
 export const content = lotrContent;

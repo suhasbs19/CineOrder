@@ -1,5 +1,5 @@
 import type { Content, DetailedLifecycleStatus } from '@/types';
-import { isPastDate, isFutureDate, getCanonicalTodayStr } from './dateUtils';
+import { isPastDate, getCanonicalTodayStr, normalizeDateStr, type ReleaseInstantOptions } from './dateUtils';
 import { classifyProviderType } from './upcomingUtils';
 
 export interface MetadataRefreshOptions {
@@ -68,21 +68,25 @@ export function getLifecycleCategory(item: Content, asOfDate?: string): Canonica
  * This function is the SINGLE canonical source for OTT state computation.
  * UI components must call isOttAvailable() (which delegates here).
  */
-export function computeOttAvailable(item: Content): boolean {
+export function computeOttAvailable(item: Content, asOfDate?: string): boolean {
   // Rule 1: Explicit verified availability state
   if (item.digital_available === true || item.subscription_streaming_available === true) {
     return true;
   }
 
-  // Rule 2: Explicit verified unavailability state
+  // Rule 2: Explicit verified unavailability state (protects theatrical-only releases from false OTT)
   if (item.digital_available === false && item.subscription_streaming_available === false) {
     return false;
   }
 
   // Rule 3: Provider inspection for released titles (overrides stale ott_available: false)
+  const normDate = normalizeDateStr(item.theatrical_release_date || item.release_date);
+  const isDatePassed = Boolean(normDate) && isPastDate(normDate, asOfDate);
+
   const isActuallyReleased =
     item.theatrical_released === true ||
-    item.status === 'released';
+    item.status === 'released' ||
+    isDatePassed;
 
   if (isActuallyReleased && item.streaming_providers && item.streaming_providers.length > 0) {
     const hasValidOttProvider = item.streaming_providers.some((p) => {
@@ -104,70 +108,80 @@ export function computeOttAvailable(item: Content): boolean {
 /**
  * Canonical lifecycle classification function.
  *
- * Single source of truth for DetailedLifecycleStatus.
- * All downstream components (buildContent, refreshMetadata, validators, UI)
- * must derive lifecycle state from this function — never infer it independently.
+ * Single source of truth for title lifecycle status across the entire application.
+ * All components, hooks, filters, and engines must derive status from this function.
+ *
+ * Rules:
+ *   1. For titles with a valid release date:
+ *      - If release date has passed (current date >= release date), title is RELEASED.
+ *        Stale stored status='upcoming' or theatrical_released=false MUST NOT override reality.
+ *      - If release date is in the future (current date < release date), title is UPCOMING.
+ *   2. For TBA titles without a date:
+ *      - Retains upcoming/announced status without inferring dates.
+ *   3. Provider-based OTT or explicit `subscription_streaming_available` promotes to `subscription_available`.
+ *   4. Explicit `digital_available` promotes to `digital_available`.
+ *   5. Theatrically released title without verified OTT availability becomes `theatrically_released`.
  *
  * Lifecycle progression:
  *   announced → upcoming → theatrically_released → digital_available → subscription_available
  *
  * @param item   Content record (may be partial during construction)
  * @param asOfDate  Optional ISO date string (YYYY-MM-DD) for deterministic testing. Defaults to today.
+ * @param options   Optional timezone and market evaluation options.
  */
-export function classifyLifecycle(item: Content, asOfDate?: string): DetailedLifecycleStatus {
+export function classifyLifecycle(
+  item: Content,
+  asOfDate?: string,
+  options?: ReleaseInstantOptions
+): DetailedLifecycleStatus {
   const asOfStr = getCanonicalTodayStr(asOfDate);
+  const rawReleaseDate = item.theatrical_release_date || item.release_date;
+  const normReleaseDate = normalizeDateStr(rawReleaseDate);
 
-  const isSub = item.subscription_streaming_available === true;
-  const isDigital = item.digital_available === true;
-
-  // Check provider-based OTT
-  const isProviderOtt = computeOttAvailable(item);
-
-  const releaseDate = item.theatrical_release_date || item.release_date;
-
-  // Evaluate Theatrical Release status deterministically:
+  // Evaluate Theatrical / Premiere Release status deterministically:
   let isTheatricallyReleased = false;
 
-  if (item.theatrical_released === true) {
-    isTheatricallyReleased = true;
-  } else if (item.theatrical_released === false) {
-    isTheatricallyReleased = false;
-  } else if (
-    item.status === 'upcoming' ||
-    item.status === 'in_production' ||
-    item.status === 'tba' ||
-    item.status === 'planned'
-  ) {
-    // Explicit unreleased status takes precedence (e.g. delayed upcoming title with stale date)
-    isTheatricallyReleased = false;
-  } else if (Boolean(releaseDate)) {
-    if (isFutureDate(releaseDate, asOfStr)) {
-      isTheatricallyReleased = false;
-    } else if (isPastDate(releaseDate, asOfStr)) {
-      isTheatricallyReleased = true;
-    }
-  } else if (item.status === 'released') {
-    isTheatricallyReleased = true;
+  if (normReleaseDate) {
+    // Authoritative Date-Based Rule: If a valid canonical release date exists,
+    // the calendar date comparison relative to today/asOfDate is the primary authority.
+    isTheatricallyReleased = isPastDate(normReleaseDate, asOfStr, options);
+  } else {
+    // TBA or Missing Release Date:
+    // Fall back to explicit status / flags without inferring a release date.
+    isTheatricallyReleased = item.theatrical_released === true || item.status === 'released';
   }
+
+  // If theatrical/premiere is NOT released, it is either upcoming or announced
+  if (!isTheatricallyReleased) {
+    const isUpcoming =
+      item.status === 'upcoming' ||
+      item.status === 'in_production' ||
+      item.status === 'tba' ||
+      item.status === 'planned' ||
+      Boolean(normReleaseDate);
+
+    return isUpcoming ? 'upcoming' : 'announced';
+  }
+
+  // If theatrically/premiere released, determine OTT / streaming distribution:
+  const isSubDatePassed = item.subscription_streaming_release_date
+    ? isPastDate(item.subscription_streaming_release_date, asOfStr, options)
+    : true;
+  const isSub = item.subscription_streaming_available === true && isSubDatePassed;
+
+  const isDigDatePassed = item.digital_release_date
+    ? isPastDate(item.digital_release_date, asOfStr, options)
+    : true;
+  const isDigital = item.digital_available === true && isDigDatePassed;
+
+  // Check provider-based OTT only if title is actually released and verified
+  const isProviderOtt = computeOttAvailable(item, asOfStr);
 
   // Hierarchy: subscription > digital > theatrical > upcoming > announced
-  if (isTheatricallyReleased) {
-    if (isSub) return 'subscription_available';
-    if (isDigital) return 'digital_available';
-    if (isProviderOtt) return 'subscription_available';
-    return 'theatrically_released';
-  }
-
-  const isUpcoming =
-    item.status === 'upcoming' ||
-    item.status === 'in_production' ||
-    item.status === 'tba' ||
-    item.status === 'planned' ||
-    (Boolean(releaseDate) && isFutureDate(releaseDate, asOfStr));
-
-  if (isUpcoming) return 'upcoming';
-
-  return 'announced';
+  if (isSub) return 'subscription_available';
+  if (isDigital) return 'digital_available';
+  if (isProviderOtt) return 'subscription_available';
+  return 'theatrically_released';
 }
 
 /**

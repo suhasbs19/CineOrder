@@ -206,6 +206,20 @@ export interface PublicProfileData {
   };
 }
 
+export interface PublicUserSearchResult {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+  account_type: AccountType;
+  public_profile: true;
+  created_at?: string;
+  bio?: string;
+  favorite_genre?: string;
+  total_watched?: number;
+  show_stats?: boolean;
+}
+
 // ─── Watch History ──────────────────────────────────────────
 
 export interface WatchHistoryItem {
@@ -319,3 +333,6 @@ export interface FilterState {
   canon: 'all' | 'canon' | 'non-canon';
   required: 'all' | 'required' | 'optional';
 }
+
+export * from './trailerDiscovery';
+export * from './trailerIntelligence';

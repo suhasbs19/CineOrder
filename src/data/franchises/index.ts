@@ -18,6 +18,7 @@ import { evilDeadFranchise, evilDeadContent, evilDeadWatchOrders } from './evild
 import { insidiousFranchise, insidiousContent, insidiousWatchOrders } from './insidious';
 import { avatarFranchise, avatarContent, avatarWatchOrders } from './avatar';
 import { alienFranchise, alienContent, alienWatchOrders } from './alien';
+import { spidermanFranchise, spidermanContent, spidermanWatchOrders } from './spiderman';
 
 export const allFranchises: Franchise[] = [
   mcuFranchise,
@@ -38,6 +39,7 @@ export const allFranchises: Franchise[] = [
   insidiousFranchise,
   avatarFranchise,
   alienFranchise,
+  spidermanFranchise,
 ];
 
 export const allContent: Content[] = [
@@ -59,6 +61,7 @@ export const allContent: Content[] = [
   ...insidiousContent,
   ...avatarContent,
   ...alienContent,
+  ...spidermanContent,
 ];
 
 export const allWatchOrders: WatchOrder[] = [
@@ -80,4 +83,5 @@ export const allWatchOrders: WatchOrder[] = [
   ...insidiousWatchOrders,
   ...avatarWatchOrders,
   ...alienWatchOrders,
+  ...spidermanWatchOrders,
 ];

@@ -137,17 +137,17 @@ assert(getLifecycleCategory(streamingItemExplicit) === 'STREAMING_AVAILABLE', 'I
 // INVARIANT 10: Avatar: Fire and Ash evaluates across all 3 release states
 // ========================================================================
 const avatar3InProd = createMock({
-  id: 'avatar-3-test',
-  title: 'Avatar: Fire and Ash (In Production)',
+  id: 'avatar-4-test',
+  title: 'Avatar 4 (In Production)',
   franchise_id: 'avatar',
-  release_date: '2025-12-19',
+  release_date: '2029-12-21',
   status: 'in_production',
   theatrical_released: false,
   digital_available: false,
   subscription_streaming_available: false,
 });
-assert(isTheatricallyUpcoming(avatar3InProd) === true, 'Inv 10A. Avatar 3 In Production -> UPCOMING');
-assert(getLifecycleCategory(avatar3InProd) === 'UPCOMING', 'Inv 10B. Avatar 3 In Production category = UPCOMING');
+assert(isTheatricallyUpcoming(avatar3InProd) === true, 'Inv 10A. Avatar 4 In Production -> UPCOMING');
+assert(getLifecycleCategory(avatar3InProd) === 'UPCOMING', 'Inv 10B. Avatar 4 In Production category = UPCOMING');
 
 const avatar3Theatrical = createMock({
   id: 'avatar-3-theatrical',
@@ -410,9 +410,9 @@ assert(getLifecycleCategory(synD) === 'UPCOMING', 'Inv 14D. future date + stale 
 const synE = createMock({ release_date: '2099-05-01', status: 'in_production', theatrical_released: undefined });
 assert(getLifecycleCategory(synE) === 'UPCOMING', 'Inv 14E. future date + stale status "in_production" → UPCOMING');
 
-// F. past date + status "in_production" → UPCOMING (unreleased status takes precedence over stale date)
+// F. past date + status "in_production" → THEATRICALLY_RELEASED (date authority rule: date passed resolves to released)
 const synF = createMock({ release_date: '2024-01-01', status: 'in_production', theatrical_released: undefined, streaming_providers: [] });
-assert(getLifecycleCategory(synF) === 'UPCOMING', 'Inv 14F. past date + status "in_production" → UPCOMING');
+assert(getLifecycleCategory(synF) === 'THEATRICALLY_RELEASED', 'Inv 14F. past date + status "in_production" → THEATRICALLY_RELEASED');
 
 // G. future date + provider metadata → must NOT automatically become streaming
 const synG = createMock({

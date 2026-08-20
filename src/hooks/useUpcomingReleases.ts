@@ -3,6 +3,8 @@ import { allContent, franchises } from '@/data/franchises';
 import { tmdb, tmdbImage } from '@/lib/tmdb';
 import { calculateCountdown, formatReleaseDate } from '@/lib/upcomingUtils';
 import { isTitleEquivalent } from '@/lib/utils';
+import { preloadImages } from '@/lib/imagePreload';
+import { sortContentByReleaseDate, compareReleaseDates } from '@/lib/releaseOrdering';
 import type { Content } from '@/types';
 
 export type ReleaseStatus = 'Upcoming' | 'Released' | 'Delayed' | 'TBA';
@@ -32,32 +34,89 @@ export interface UpcomingItem {
 
 export { calculateCountdown, formatReleaseDate };
 
+/**
+ * Builds candidate upcoming items synchronously from the canonical catalog.
+ * This guarantees zero layout delay or blank page flashes during component mounting.
+ */
+export function buildInitialUpcomingItems(): UpcomingItem[] {
+  const franchiseMap = new Map(franchises.map((f) => [f.id, f]));
+
+  const candidateSeed = sortContentByReleaseDate(
+    allContent.filter((c) => {
+      const st = (c.status || '').toString().toLowerCase();
+      return (
+        st === 'upcoming' ||
+        st === 'in_production' ||
+        st === 'tba' ||
+        st === 'planned' ||
+        (c.release_date && c.release_date >= '2025-01-01')
+      );
+    })
+  );
+
+  return candidateSeed.map((c) => {
+    const f = franchiseMap.get(c.franchise_id);
+    const poster = c.poster_url || '/placeholder-poster.svg';
+    const backdrop = c.backdrop_url || '/placeholder-backdrop.svg';
+    const seedStatus = (c.status || '').toString().toLowerCase();
+    const calc = calculateCountdown(c.release_date, seedStatus);
+
+    return {
+      id: c.id,
+      tmdb_id: c.tmdb_id,
+      title: c.title,
+      type: c.type,
+      franchise_id: c.franchise_id,
+      franchise_name: f ? f.name : c.franchise_id,
+      franchise_slug: f ? f.slug : c.franchise_id,
+      poster_url: poster,
+      backdrop_url: backdrop,
+      overview: c.overview,
+      release_date: c.release_date,
+      status: calc.status,
+      countdown: {
+        daysTotal: calc.daysTotal,
+        daysSinceRelease: calc.daysSinceRelease,
+        text: calc.text,
+        formattedDate: calc.formattedDate,
+      },
+      content: c,
+    } as UpcomingItem;
+  });
+}
+
 export function useUpcomingReleases() {
-  const [items, setItems] = useState<UpcomingItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [items, setItems] = useState<UpcomingItem[]>(() => buildInitialUpcomingItems());
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
+    // Preload verified poster URLs in background for immediate rendering
+    const verifiedUrls = items
+      .map((it) => it.poster_url)
+      .filter((url) => Boolean(url && url.startsWith('http')));
+    if (verifiedUrls.length > 0) {
+      preloadImages(verifiedUrls);
+    }
+
     async function loadUpcoming() {
       try {
-        setLoading(true);
-        setError(null);
-
         const franchiseMap = new Map(franchises.map((f) => [f.id, f]));
 
-        // Select candidate upcoming or recent releases
-        const candidateSeed = allContent.filter((c) => {
-          const st = (c.status || '').toString().toLowerCase();
-          return (
-            st === 'upcoming' ||
-            st === 'in_production' ||
-            st === 'tba' ||
-            st === 'planned' ||
-            (c.release_date && c.release_date >= '2025-01-01')
-          );
-        });
+        const candidateSeed = sortContentByReleaseDate(
+          allContent.filter((c) => {
+            const st = (c.status || '').toString().toLowerCase();
+            return (
+              st === 'upcoming' ||
+              st === 'in_production' ||
+              st === 'tba' ||
+              st === 'planned' ||
+              (c.release_date && c.release_date >= '2025-01-01')
+            );
+          })
+        );
 
         const enrichedItems = await Promise.all(
           candidateSeed.map(async (c) => {
@@ -76,16 +135,6 @@ export function useUpcomingReleases() {
                   if (tv) {
                     const returnedTitle = tv.name;
                     const isValid = tv.id === c.tmdb_id && isTitleEquivalent(c.title, returnedTitle);
-                    console.log(`[TMDb Investigation - Upcoming Series]`, {
-                      seedTitle: c.title,
-                      seedTmdbId: c.tmdb_id,
-                      returnedTmdbId: tv.id,
-                      returnedTitle,
-                      posterPath: tv.poster_path,
-                      backdropPath: tv.backdrop_path,
-                      isValid,
-                    });
-
                     if (isValid) {
                       if (tv.poster_path) poster = tmdbImage.poster(tv.poster_path);
                       if (tv.backdrop_path) backdrop = tmdbImage.backdrop(tv.backdrop_path);
@@ -98,16 +147,6 @@ export function useUpcomingReleases() {
                   if (m) {
                     const returnedTitle = m.title;
                     const isValid = m.id === c.tmdb_id && isTitleEquivalent(c.title, returnedTitle);
-                    console.log(`[TMDb Investigation - Upcoming Movie]`, {
-                      seedTitle: c.title,
-                      seedTmdbId: c.tmdb_id,
-                      returnedTmdbId: m.id,
-                      returnedTitle,
-                      posterPath: m.poster_path,
-                      backdropPath: m.backdrop_path,
-                      isValid,
-                    });
-
                     if (isValid) {
                       if (m.poster_path) poster = tmdbImage.poster(m.poster_path);
                       if (m.backdrop_path) backdrop = tmdbImage.backdrop(m.backdrop_path);
@@ -133,11 +172,7 @@ export function useUpcomingReleases() {
             }
 
             const calc = calculateCountdown(releaseDate, seedStatus);
-
-            let finalStatus: ReleaseStatus = calc.status;
-            if ((seedStatus === 'upcoming' || seedStatus === 'in_production' || seedStatus === 'tba' || seedStatus === 'planned') && calc.status === 'Released') {
-              finalStatus = 'Upcoming';
-            }
+            const finalStatus: ReleaseStatus = calc.status;
 
             return {
               id: c.id,
@@ -164,7 +199,7 @@ export function useUpcomingReleases() {
         );
 
         if (isMounted) {
-          setItems(enrichedItems);
+          setItems([...enrichedItems].sort(compareReleaseDates));
           setLoading(false);
         }
       } catch (err: any) {

@@ -5,6 +5,7 @@ import { getFranchiseContent, getWatchOrders, franchises } from '@/data/franchis
 import { getFranchiseArtwork } from '@/data/franchiseArtwork';
 import { supabase } from '@/lib/supabase';
 import { normalizeTitle, isTitleEquivalent } from '@/lib/utils';
+import { sortWatchOrdersByReleaseDate } from '@/lib/releaseOrdering';
 import type { Content, WatchOrder, CastMember } from '@/types';
 
 interface UseTMDbContentResult {
@@ -174,8 +175,13 @@ export function useTMDbContent(franchiseId: string): UseTMDbContentResult {
         });
 
         const normalizedWatchOrders: WatchOrder[] = [];
-        Object.values(ordersByType).forEach((group) => {
-          group.forEach((order, idx) => {
+        Object.entries(ordersByType).forEach(([orderType, group]) => {
+          const sortedGroup =
+            orderType === 'release'
+              ? sortWatchOrdersByReleaseDate(group, safeEnrichedItems)
+              : [...group].sort((a, b) => a.position - b.position);
+
+          sortedGroup.forEach((order, idx) => {
             normalizedWatchOrders.push({
               ...order,
               position: idx + 1,

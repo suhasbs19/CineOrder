@@ -1,5 +1,7 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { titleNodes, storyEdges, type StoryEdge, type TitleNode } from '@/data/cineOrderKnowledgeGraph';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const dceuFranchise: Franchise = {
   id: 'dc-extended-universe',
@@ -9,9 +11,9 @@ export const dceuFranchise: Franchise = {
   poster_url: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
   banner_url: 'https://image.tmdb.org/t/p/w1280/tMefBSGv6WvBGexXhYkjKW8hC9v.jpg',
   tmdb_collection_id: null,
-  total_movies: 19,
+  total_movies: 20,
   total_series: 4,
-  total_runtime: 3100,
+  total_runtime: 3225,
   status: 'active',
   created_at: '2024-01-01',
   updated_at: '2024-01-01',
@@ -397,7 +399,12 @@ export const dceuContent: Content[] = [
     episode_count: 8,
     season_count: 1,
     rating: 8.5,
-    status: 'upcoming',
+    status: 'released',
+    theatrical_released: true,
+    theatrical_release_date: '2026-08-16',
+    subscription_streaming_available: true,
+    subscription_streaming_release_date: '2026-08-16',
+    ott_available: true,
     providers: ['Max'],
   }),
   buildContent({
@@ -451,9 +458,85 @@ export const dceuContent: Content[] = [
     status: 'upcoming',
     providers: ['Max'],
   }),
+  buildContent({
+    id: 'dc-supergirl',
+    franchise_id: 'dc-extended-universe',
+    tmdb_id: 1081003,
+    title: 'Supergirl: Woman of Tomorrow',
+    type: 'movie',
+    poster_url: 'https://image.tmdb.org/t/p/w500/1QCWdqzTfh2x9UylVpspIU6QTuM.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/54KIfdTEzOliHDKx0OkzYGqAICx.jpg',
+    overview: 'Kara Zor-El travels the cosmos with Krypto the Superdog on a vengeful, character-defining sci-fi quest across the stars.',
+    release_date: '2026-06-26',
+    theatrical_release_date: '2026-06-26',
+    runtime: 125,
+    rating: 8.0,
+    status: 'upcoming',
+    theatrical_released: false,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
+    director: 'Craig Gillespie',
+    providers: ['Max'],
+  }),
 ];
 
-export const dceuWatchOrders: WatchOrder[] = dceuContent.map((item, index) =>
+const dcuExtraTitleNodes: Record<string, TitleNode> = {
+  'dc-supergirl': {
+    id: 'dc-supergirl',
+    title: 'Supergirl: Woman of Tomorrow',
+    type: 'movie',
+    releaseDate: '2026-06-26',
+    universe: 'DC Universe',
+    saga: 'Chapter 1: Gods and Monsters',
+    characters: ['Kara Zor-El / Supergirl', 'Ruthye Marye Knoll', 'Krypto'],
+    villains: ['Krem of the Yellow Hills'],
+    organizations: ['House of El'],
+    objects: ['Kryptonian Sunstone'],
+    storyArcs: ['Chapter 1: Gods and Monsters'],
+    spoilerFreeContext: 'Kara Zor-El embarks on an epic intergalactic journey of vengeance and justice.',
+  },
+};
+
+const dcuExtraStoryEdges: StoryEdge[] = [
+  {
+    sourceId: 'dc-superman-2025',
+    targetId: 'dc-supergirl',
+    relationship: 'character-origin',
+    strength: 'strong',
+    confidence: 'confirmed',
+    reason: 'James Gunn Superman introduces Kara Zor-El into the new DC Universe before her cosmic solo journey.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'primary',
+    recommendationEvidence: {
+      shortReason: 'Introduces Kara Zor-El and establishes the new DC Universe status quo.',
+      detailedReasons: [
+        'Introduces Milly Alcock Kara Zor-El within the newly formed DC Universe continuity.',
+        'Contrasts Kal-El upbringing on Earth with Kara tragic survival on surviving Krypton remnants.',
+      ],
+      source: 'editorial',
+    },
+  },
+];
+
+for (const [key, node] of Object.entries(dcuExtraTitleNodes)) {
+  if (!titleNodes[key]) {
+    titleNodes[key] = node;
+  }
+}
+
+for (const edge of dcuExtraStoryEdges) {
+  const exists = storyEdges.some(
+    (e) => e.sourceId === edge.sourceId && e.targetId === edge.targetId && e.relationship === edge.relationship
+  );
+  if (!exists) {
+    storyEdges.push(edge);
+  }
+}
+
+const sortedDcuForRelease = [...dceuContent].sort(compareReleaseDates);
+
+export const dceuWatchOrders: WatchOrder[] = sortedDcuForRelease.map((item, index) =>
   buildWatchOrder({
     id: `dceu-rel-${index + 1}`,
     franchise_id: 'dc-extended-universe',
@@ -462,7 +545,7 @@ export const dceuWatchOrders: WatchOrder[] = dceuContent.map((item, index) =>
     position: index + 1,
   })
 ).concat(
-  dceuContent.map((item, index) =>
+  sortedDcuForRelease.map((item, index) =>
     buildWatchOrder({
       id: `dceu-chr-${index + 1}`,
       franchise_id: 'dc-extended-universe',

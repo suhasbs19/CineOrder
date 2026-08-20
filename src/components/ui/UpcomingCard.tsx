@@ -35,10 +35,13 @@ export function UpcomingCard({ item, featured = false, mode = 'upcoming' }: Upco
             src={item.backdrop_url || item.poster_url}
             alt={item.title}
             fallbackSrc="/placeholder-backdrop.svg"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            aspectRatio="auto"
+            priority={featured}
+            imgClassName="group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-full"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent pointer-events-none" />
         </div>
 
         {/* Content Banner Overlay */}
@@ -113,7 +116,9 @@ export function UpcomingCard({ item, featured = false, mode = 'upcoming' }: Upco
             src={item.poster_url}
             alt={item.title}
             fallbackSrc="/placeholder-poster.svg"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            aspectRatio="poster"
+            imgClassName="group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 

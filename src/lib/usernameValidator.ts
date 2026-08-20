@@ -47,7 +47,7 @@ export interface UsernameValidationResult {
  * Normalizes username for case-insensitive comparison and storage.
  */
 export function normalizeUsername(username: string): string {
-  return (username || '').trim().toLowerCase();
+  return (username || '').trim().replace(/^@+/, '').toLowerCase();
 }
 
 /**

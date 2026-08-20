@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { allContent } from '@/data/franchises';
+import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
 import type { WatchHistoryItem, FranchiseProgress, Franchise } from '@/types';
 
 interface WatchState {
@@ -47,11 +49,22 @@ export const useWatchStore = create<WatchState>((set, get) => ({
     if (isCurrentlyWatched) {
       await get().markUnwatched(userId, contentId);
     } else {
+      const target = allContent.find((c) => c.id === contentId);
+      if (target && isTheatricallyUpcoming(target)) {
+        console.warn(`[WatchStore] Cannot toggle watch status for unreleased title '${contentId}'.`);
+        return;
+      }
       await get().markWatched(userId, contentId);
     }
   },
 
   markWatched: async (userId, contentId) => {
+    const target = allContent.find((c) => c.id === contentId);
+    if (target && isTheatricallyUpcoming(target)) {
+      console.warn(`[WatchStore] Blocked marking unreleased title '${contentId}' as watched.`);
+      return;
+    }
+
     const { error } = await supabase.from('watch_history').upsert({
       user_id: userId,
       content_id: contentId,

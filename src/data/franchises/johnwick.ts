@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const johnWickFranchise: Franchise = {
   id: 'john-wick',
@@ -112,7 +113,9 @@ export const johnWickContent: Content[] = [
   }),
 ];
 
-export const johnWickWatchOrders: WatchOrder[] = johnWickContent.map((item, index) =>
+const sortedJwForRelease = [...johnWickContent].sort(compareReleaseDates);
+
+export const johnWickWatchOrders: WatchOrder[] = sortedJwForRelease.map((item, index) =>
   buildWatchOrder({
     id: `jw-rel-${index + 1}`,
     franchise_id: 'john-wick',

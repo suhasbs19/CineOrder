@@ -16,3 +16,4 @@ dist
 *.key
 *.pem
 !.env.example
+.vercel

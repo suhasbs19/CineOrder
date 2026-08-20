@@ -1,5 +1,7 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { titleNodes, storyEdges, type StoryEdge, type TitleNode } from '@/data/cineOrderKnowledgeGraph';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const alienFranchise: Franchise = {
   id: 'alien',
@@ -10,8 +12,8 @@ export const alienFranchise: Franchise = {
   banner_url: 'https://image.tmdb.org/t/p/w1280/6X42JnSMdo3dPAswOHUuvebdTq7.jpg',
   tmdb_collection_id: 8091,
   total_movies: 7,
-  total_series: 0,
-  total_runtime: 842,
+  total_series: 1,
+  total_runtime: 902,
   status: 'active',
   created_at: '2024-01-01',
   updated_at: '2024-01-01',
@@ -186,26 +188,101 @@ export const alienContent: Content[] = [
     status: 'released',
     metadata_checked_at: new Date().toISOString(),
   }),
+  buildContent({
+    id: 'alien-earth',
+    franchise_id: 'alien',
+    tmdb_id: 157239,
+    title: 'Alien: Earth',
+    type: 'series',
+    poster_url: 'https://image.tmdb.org/t/p/w500/yueXS3q8BtoWekcHOATFHicLl3e.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/sVxit4vKQZnrHejeQupBYadP22g.jpg',
+    overview: 'When a mysterious space vessel crash-lands on Earth, a young woman and a ragtag group of tactical soldiers make a fateful discovery that puts them face-to-face with the planet\'s greatest threat.',
+    release_date: '2025-08-12',
+    theatrical_release_date: '2025-08-12',
+    runtime: 60,
+    rating: 7.8,
+    status: 'released',
+    theatrical_released: true,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
+    director: 'Noah Hawley',
+    providers: ['Hulu', 'Disney+'],
+  }),
 ];
 
-export const alienWatchOrders: WatchOrder[] = [
-  // ─── RELEASE ORDER ──────────────────────────────────────────
-  buildWatchOrder({ id: 'wo-alien-rel-1', franchise_id: 'alien', content_id: 'alien-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'wo-alien-rel-2', franchise_id: 'alien', content_id: 'alien-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'wo-alien-rel-3', franchise_id: 'alien', content_id: 'alien-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'wo-alien-rel-4', franchise_id: 'alien', content_id: 'alien-4', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'wo-alien-rel-5', franchise_id: 'alien', content_id: 'alien-prometheus', order_type: 'release', position: 5 }),
-  buildWatchOrder({ id: 'wo-alien-rel-6', franchise_id: 'alien', content_id: 'alien-covenant', order_type: 'release', position: 6 }),
-  buildWatchOrder({ id: 'wo-alien-rel-7', franchise_id: 'alien', content_id: 'alien-romulus', order_type: 'release', position: 7 }),
+const alienExtraTitleNodes: Record<string, TitleNode> = {
+  'alien-earth': {
+    id: 'alien-earth',
+    title: 'Alien: Earth',
+    type: 'tv-series',
+    releaseDate: '2025-08-12',
+    universe: 'Alien',
+    characters: ['Wendy', 'Kirsh', 'CJ', 'Boy Kavalier'],
+    villains: ['Xenomorph Specimen', 'Prodigy Corporation'],
+    organizations: ['Weyland-Yutani Corporation', 'Prodigy Corporation'],
+    objects: ['Xenomorph Egg', 'Crash-Landed Vessel'],
+    storyArcs: ['Earth Xenomorph Outbreak'],
+    spoilerFreeContext: 'A crashed research vessel unleashes terrifying Xenomorph specimens on near-future Earth.',
+  },
+};
 
+const alienExtraStoryEdges: StoryEdge[] = [
+  {
+    sourceId: 'alien-1',
+    targetId: 'alien-earth',
+    relationship: 'world-building',
+    strength: 'strong',
+    confidence: 'confirmed',
+    reason: 'Prequel series setting up Weyland-Yutani pursuit of synthetic life and bio-weapon Xenomorph specimens on Earth.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'supporting',
+    recommendationEvidence: {
+      shortReason: 'Provides foundational Xenomorph biology context for Noah Hawley Earth-based prequel series.',
+      detailedReasons: [
+        'Introduces the Xenomorph life cycle and corporate ruthlessness of Weyland-Yutani.',
+        'Explores the origins of synthetics and corporate warfare leading up to the Nostromo era.',
+      ],
+      source: 'editorial',
+    },
+  },
+];
+
+for (const [key, node] of Object.entries(alienExtraTitleNodes)) {
+  if (!titleNodes[key]) {
+    titleNodes[key] = node;
+  }
+}
+
+for (const edge of alienExtraStoryEdges) {
+  const exists = storyEdges.some(
+    (e) => e.sourceId === edge.sourceId && e.targetId === edge.targetId && e.relationship === edge.relationship
+  );
+  if (!exists) {
+    storyEdges.push(edge);
+  }
+}
+
+const sortedAlienForRelease = [...alienContent].sort(compareReleaseDates);
+
+export const alienWatchOrders: WatchOrder[] = sortedAlienForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `wo-alien-rel-${index + 1}`,
+    franchise_id: 'alien',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
   // ─── CHRONOLOGICAL ORDER ────────────────────────────────────
   buildWatchOrder({ id: 'wo-alien-chr-1', franchise_id: 'alien', content_id: 'alien-prometheus', order_type: 'chronological', position: 1, notes: 'Set in 2089-2093, exploring the origins of humanity and the Engineers.' }),
-  buildWatchOrder({ id: 'wo-alien-chr-2', franchise_id: 'alien', content_id: 'alien-covenant', order_type: 'chronological', position: 2, notes: 'Set in 2104, 11 years after the Prometheus expedition.' }),
-  buildWatchOrder({ id: 'wo-alien-chr-3', franchise_id: 'alien', content_id: 'alien-1', order_type: 'chronological', position: 3, notes: 'Set in 2122 aboard the commercial towing vehicle USCSS Nostromo.' }),
-  buildWatchOrder({ id: 'wo-alien-chr-4', franchise_id: 'alien', content_id: 'alien-romulus', order_type: 'chronological', position: 4, notes: 'Set in 2142, exactly 20 years after Alien and 37 years before Aliens.' }),
-  buildWatchOrder({ id: 'wo-alien-chr-5', franchise_id: 'alien', content_id: 'alien-2', order_type: 'chronological', position: 5, notes: 'Set in 2179, 57 years after the Nostromo incident.' }),
-  buildWatchOrder({ id: 'wo-alien-chr-6', franchise_id: 'alien', content_id: 'alien-3', order_type: 'chronological', position: 6, notes: 'Set immediately following the escape from LV-426 in 2179 on Fiorina 161.' }),
-  buildWatchOrder({ id: 'wo-alien-chr-7', franchise_id: 'alien', content_id: 'alien-4', order_type: 'chronological', position: 7, notes: 'Set in 2379, 200 years after Ripley\'s death on Fiorina 161.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-2', franchise_id: 'alien', content_id: 'alien-earth', order_type: 'chronological', position: 2, notes: 'Set in 2092 on Earth, depicting corporate synthetic warfare and early Xenomorph contact.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-3', franchise_id: 'alien', content_id: 'alien-covenant', order_type: 'chronological', position: 3, notes: 'Set in 2104, 11 years after the Prometheus expedition.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-4', franchise_id: 'alien', content_id: 'alien-1', order_type: 'chronological', position: 4, notes: 'Set in 2122 aboard the commercial towing vehicle USCSS Nostromo.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-5', franchise_id: 'alien', content_id: 'alien-romulus', order_type: 'chronological', position: 5, notes: 'Set in 2142, exactly 20 years after Alien and 37 years before Aliens.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-6', franchise_id: 'alien', content_id: 'alien-2', order_type: 'chronological', position: 6, notes: 'Set in 2179, 57 years after the Nostromo incident.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-7', franchise_id: 'alien', content_id: 'alien-3', order_type: 'chronological', position: 7, notes: 'Set immediately following the escape from LV-426 in 2179 on Fiorina 161.' }),
+  buildWatchOrder({ id: 'wo-alien-chr-8', franchise_id: 'alien', content_id: 'alien-4', order_type: 'chronological', position: 8, notes: 'Set in 2379, 200 years after Ripley\'s death on Fiorina 161.' }),
 
   // ─── RECOMMENDED ORDER ──────────────────────────────────────
   buildWatchOrder({ id: 'wo-alien-rec-1', franchise_id: 'alien', content_id: 'alien-1', order_type: 'recommended', position: 1, notes: 'The cinematic foundation establishing the Xenomorph horror.' }),
@@ -215,7 +292,8 @@ export const alienWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'wo-alien-rec-5', franchise_id: 'alien', content_id: 'alien-4', order_type: 'recommended', position: 5, notes: 'Stylized post-script adventure set two centuries later.' }),
   buildWatchOrder({ id: 'wo-alien-rec-6', franchise_id: 'alien', content_id: 'alien-prometheus', order_type: 'recommended', position: 6, notes: 'Prequel duology exploring Weyland Corporation origins.' }),
   buildWatchOrder({ id: 'wo-alien-rec-7', franchise_id: 'alien', content_id: 'alien-covenant', order_type: 'recommended', position: 7, notes: 'Direct sequel to Prometheus connecting back to Xenomorph lore.' }),
-];
+  buildWatchOrder({ id: 'wo-alien-rec-8', franchise_id: 'alien', content_id: 'alien-earth', order_type: 'recommended', position: 8, notes: 'Earth-based prequel series expanding corporate sci-fi lore.' }),
+]);
 
 export const franchise = alienFranchise;
 export const content = alienContent;

@@ -104,12 +104,24 @@ export interface PreparationRecommendation {
   decisionPath?: DecisionPath;
 }
 
+import type { OfficialSourceMetadata, OfficialPreparationCategory } from './officialPreparation';
+
+export type PreparationGuideMode = 'GRAPH_RECOMMENDATION' | 'OFFICIAL_OVERRIDE';
+
 export interface PreparationGuideData {
   targetContent: Content;
+  mode?: PreparationGuideMode;
+  officialSource?: OfficialSourceMetadata;
+  officialCategories?: OfficialPreparationCategory[];
+  officialItems?: PreparationRecommendation[];
+  officialPreparationItems: PreparationRecommendation[];
+  cineOrderExtraContent: PreparationRecommendation[];
+  supplementaryRecommendations?: PreparationRecommendation[];
   mustWatch: PreparationRecommendation[];
   recommended: PreparationRecommendation[];
   optional: PreparationRecommendation[];
   safeToSkip: PreparationRecommendation[];
+  postCreditContext?: PreparationRecommendation[];
   estimatedWatchTimeMinutes: number;
   formattedWatchTime: string;
   storyReadinessPercentage: number;
@@ -117,4 +129,11 @@ export interface PreparationGuideData {
   totalPrerequisitesCount: number;
   isEntryPoint?: boolean;
   entryPointMessage?: string;
+  timelineWarnings?: string[];
+  diagnostics?: {
+    traversedNodeCount: number;
+    averagePathDepth: number;
+    validationStatus: 'Passed' | 'Failed';
+    generationTimeMs: number;
+  };
 }

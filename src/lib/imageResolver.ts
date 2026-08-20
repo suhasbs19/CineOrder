@@ -6,6 +6,14 @@
 import type { Content, Franchise } from '@/types';
 import { tmdbImage } from '@/lib/tmdb';
 
+export {
+  preloadImage,
+  preloadImages,
+  isImageCached,
+  markImageLoaded,
+  clearImageCache,
+} from './imagePreload';
+
 export const CINEORDER_PLACEHOLDER_POSTER = '/placeholder-poster.svg';
 export const CINEORDER_PLACEHOLDER_BACKDROP = '/placeholder-backdrop.svg';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Menu, X, Film, Shield, LogOut, Heart, Settings, ChevronDown } from 'lucide-react';
+import { User, Menu, X, Film, Shield, LogOut, Heart, Settings, ChevronDown, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { Avatar } from '@/components/ui/Avatar';
@@ -91,9 +91,9 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-6">
               <NavLink to="/" label="Home" />
               <NavLink to="/search" label="Explore" />
+              <NavLink to="/users" label="Users" />
               <NavLink to="/upcoming" label="Upcoming" />
               <NavLink to="/planner" label="Planner" />
-              <NavLink to="/assistant" label="AI Advisor" />
               {user && <NavLink to="/profile" label="My List" />}
             </div>
 
@@ -135,6 +135,11 @@ export function Navbar() {
                             icon={<User className="w-4 h-4" />}
                             label="Profile"
                             onClick={() => navigate('/profile')}
+                          />
+                          <UserMenuItem
+                            icon={<Users className="w-4 h-4" />}
+                            label="Find Users"
+                            onClick={() => navigate('/users')}
                           />
                           <UserMenuItem
                             icon={<Heart className="w-4 h-4" />}
@@ -215,9 +220,9 @@ export function Navbar() {
               <div className="space-y-2">
                 <MobileNavLink to="/" label="Home" onClick={() => setMobileMenuOpen(false)} />
                 <MobileNavLink to="/search" label="Explore" onClick={() => setMobileMenuOpen(false)} />
+                <MobileNavLink to="/users" label="Search Users" onClick={() => setMobileMenuOpen(false)} />
                 <MobileNavLink to="/upcoming" label="Upcoming" onClick={() => setMobileMenuOpen(false)} />
                 <MobileNavLink to="/planner" label="Watch Planner" onClick={() => setMobileMenuOpen(false)} />
-                <MobileNavLink to="/assistant" label="AI Advisor" onClick={() => setMobileMenuOpen(false)} />
                 {user ? (
                   <>
                     <MobileNavLink to="/profile" label="Profile" onClick={() => setMobileMenuOpen(false)} />

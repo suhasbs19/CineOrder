@@ -133,6 +133,10 @@ const VERIFIED_STANDALONE_REGISTRY = new Set<string>([
   // Insidious
   'ins-1',
   'ins-3',
+  // Spider-Man (Legacy Continuities)
+  'spiderman-1',
+  'amazing-spiderman-1',
+  'spider-verse-1',
 ]);
 
 /**

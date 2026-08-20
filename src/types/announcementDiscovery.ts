@@ -99,6 +99,37 @@ export interface DuplicateCheckMatch {
   reason?: string;
 }
 
+export type ArtworkQualityState =
+  | 'VERIFIED'
+  | 'PARTIAL'
+  | 'FALLBACK'
+  | 'AMBIGUOUS'
+  | 'FAILED';
+
+export type TMDbMatchStatus =
+  | 'VERIFIED'
+  | 'AMBIGUOUS'
+  | 'NOT_FOUND'
+  | 'MISMATCH'
+  | 'PENDING';
+
+export interface ArtworkVerificationDetails {
+  status: ArtworkQualityState;
+  reason: string;
+  tmdbMatchStatus: TMDbMatchStatus;
+  tmdbId?: number | null;
+  tmdbTitle?: string;
+  mediaType?: 'movie' | 'tv' | 'series';
+  releaseDate?: string;
+  posterUrl: string;
+  backdropUrl: string;
+  posterVerified: boolean;
+  backdropVerified: boolean;
+  posterPath?: string | null;
+  backdropPath?: string | null;
+  isCustomArtwork?: boolean;
+}
+
 export interface ChangeProposalDiff {
   fieldName: string;
   previousValue: string;
@@ -128,6 +159,7 @@ export interface AnnouncementCandidate {
   director?: string;
   posterUrl: string;
   backdropUrl: string;
+  artworkVerification?: ArtworkVerificationDetails;
   isCanon: boolean;
   isRequired: boolean;
   lifecycleCategory: 'UPCOMING' | 'THEATRICALLY_RELEASED' | 'STREAMING_AVAILABLE';
@@ -153,6 +185,7 @@ export interface AnnouncementProposalPackage {
   overallQualityScore: number; // 0 to 100
   sourceVerification: OfficialSourceVerification;
   sourceEvent?: NormalizedSourceEvent;
+  artworkVerification?: ArtworkVerificationDetails;
   isConflict?: boolean;
   conflictDetails?: {
     primarySource: string;

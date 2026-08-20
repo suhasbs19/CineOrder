@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const theHobbitFranchise: Franchise = {
   id: 'the-hobbit',
@@ -70,11 +71,17 @@ export const theHobbitContent: Content[] = [
   }),
 ];
 
-export const theHobbitWatchOrders: WatchOrder[] = [
-  // Release & Chronological Order (identical)
-  buildWatchOrder({ id: 'hobbit-rel-1', franchise_id: 'the-hobbit', content_id: 'hobbit-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'hobbit-rel-2', franchise_id: 'the-hobbit', content_id: 'hobbit-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'hobbit-rel-3', franchise_id: 'the-hobbit', content_id: 'hobbit-3', order_type: 'release', position: 3 }),
+const sortedHobbitForRelease = [...theHobbitContent].sort(compareReleaseDates);
+
+export const theHobbitWatchOrders: WatchOrder[] = sortedHobbitForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `hobbit-rel-${index + 1}`,
+    franchise_id: 'the-hobbit',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   buildWatchOrder({ id: 'hobbit-chr-1', franchise_id: 'the-hobbit', content_id: 'hobbit-1', order_type: 'chronological', position: 1, notes: 'Set 60 years before The Lord of the Rings.' }),
   buildWatchOrder({ id: 'hobbit-chr-2', franchise_id: 'the-hobbit', content_id: 'hobbit-2', order_type: 'chronological', position: 2 }),
@@ -84,7 +91,7 @@ export const theHobbitWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'hobbit-rec-1', franchise_id: 'the-hobbit', content_id: 'hobbit-1', order_type: 'recommended', position: 1 }),
   buildWatchOrder({ id: 'hobbit-rec-2', franchise_id: 'the-hobbit', content_id: 'hobbit-2', order_type: 'recommended', position: 2 }),
   buildWatchOrder({ id: 'hobbit-rec-3', franchise_id: 'the-hobbit', content_id: 'hobbit-3', order_type: 'recommended', position: 3 }),
-];
+]);
 
 export const franchise = theHobbitFranchise;
 export const content = theHobbitContent;

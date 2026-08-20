@@ -39,9 +39,9 @@ const createMockContent = (overrides: Partial<Content>): Content =>
 const mockA = createMockContent({ id: 'mock-a', release_date: '2027-12-31', status: 'upcoming' });
 assert(isUpcomingItem(mockA) === true, 'A. Future date + status "upcoming" → included in Upcoming');
 
-// B. Past date + status "upcoming" → STILL included in Upcoming.
+// B. Past date + status "upcoming" → date-aware engine classifies past date as released (not upcoming)
 const mockB = createMockContent({ id: 'mock-b', release_date: '2025-05-01', status: 'upcoming' });
-assert(isUpcomingItem(mockB) === true, 'B. Past date + status "upcoming" → STILL included in Upcoming');
+assert(isUpcomingItem(mockB) === false, 'B. Past date + status "upcoming" → date-authoritative engine recognizes as already released');
 
 // C. Past date + status "released" → NOT included in Upcoming.
 const mockC = createMockContent({ id: 'mock-c', release_date: '2019-04-26', status: 'released' });
@@ -64,13 +64,13 @@ assert(isUpcomingItem(mockF) === true, 'F. status "tba" → included in Upcoming
 const mockG = createMockContent({ id: 'mock-g', release_date: '2028-01-01', status: 'planned' });
 assert(isUpcomingItem(mockG) === true, 'G. status "planned" → included in Upcoming');
 
-// H. Upcoming title with stale date → does not show "Now Available".
+// H. Past date countdown → shows "Now Available".
 const mockH = createMockContent({ id: 'mock-h', release_date: '2025-01-01', status: 'upcoming' });
 const calcH = calculateCountdown(mockH.release_date, mockH.status);
-assert(calcH.text !== 'Now Available', 'H. Upcoming title with stale date → does NOT show "Now Available"');
+assert(calcH.text === 'Now Available', 'H. Elapsed release date → shows "Now Available"');
 
-// I. Upcoming title with stale date → does not produce a negative countdown.
-assert(calcH.daysTotal === null || calcH.daysTotal >= 0, 'I. Upcoming title with stale date → does NOT produce a negative countdown');
+// I. Past date countdown → calculates days since release.
+assert(calcH.daysSinceRelease !== null && calcH.daysSinceRelease > 0, 'I. Elapsed release date → calculates daysSinceRelease accurately');
 
 // J. Recently Released ONLY accepts status "released".
 assert(isRecentlyReleasedItem(mockB) === false, 'J1. Stale upcoming item is NOT in Recently Released');

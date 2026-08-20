@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/Card';
 import { SafeImage } from '@/components/ui/SafeImage';
 import { FranchiseCardSkeleton } from '@/components/ui/Skeleton';
 import { UpcomingCard } from '@/components/ui/UpcomingCard';
-import { AskCineOrderSection } from '@/components/home/AskCineOrderSection';
 import { ContinuePreparationWidget } from '@/components/home/ContinuePreparationWidget';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { useUpcomingReleases } from '@/hooks/useUpcomingReleases';
@@ -38,82 +37,88 @@ export default function HomePage() {
           content="Discover the correct order to watch movies, TV series, specials and spin-offs. Get chronological and release viewing orders for Marvel, Star Wars, DC, Harry Potter and more."
         />
         <meta property="og:title" content="CineOrder — Find the Perfect Watch Order" />
-        <meta property="og:description" content="Movies, TV Series, Specials and Spin-offs in the correct order." />
+        <meta
+          property="og:description"
+          content="Discover the correct order to watch movies, TV series, specials and spin-offs."
+        />
       </Helmet>
 
-      {/* ─── 1. Hero Section & Search ────────────────────────────── */}
-      <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-        {/* Background Gradients & Grid */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[150px] opacity-30" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-              backgroundSize: '60px 60px',
-            }}
-          />
-        </div>
+      {/* ─── 1. Hero Section ────────────────────────────────────── */}
+      <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24">
+        {/* Background glow effects */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-primary/15 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/3 left-1/3 w-[300px] h-[200px] bg-accent-blue/10 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-xs sm:text-sm text-muted-light mb-6"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-8">
-              <Sparkles className="w-4 h-4" />
-              <span>
-                {franchises.length} Franchises • {allContent.length}+ Titles • Watch Preparation
-              </span>
-            </div>
-
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-tight mb-6">
-              Find the Perfect <span className="text-gradient">Watch Order</span>
-            </h1>
-
-            <p className="text-lg sm:text-xl text-muted-light max-w-2xl mx-auto mb-10 text-balance">
-              Movies, TV Series, Specials and Spin-offs in the correct order. Never watch out of sequence again.
-            </p>
+            <Film className="w-4 h-4 text-primary" />
+            <span>Story Knowledge Graph & Traversal Engine</span>
           </motion.div>
+
+          {/* Heading */}
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight max-w-4xl mx-auto leading-[1.1]"
+          >
+            Find the Perfect{' '}
+            <span className="text-gradient">Watch Order</span>{' '}
+            for Every Franchise
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-6 text-lg sm:text-xl text-muted-light max-w-2xl mx-auto font-normal leading-relaxed"
+          >
+            Chronological timelines, release orders, and story prerequisite recommendations.
+            Never wonder what to watch next.
+          </motion.p>
 
           {/* Search Bar */}
           <motion.form
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
             onSubmit={handleSearch}
-            className="relative max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-8 max-w-xl mx-auto"
           >
-            <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-muted group-focus-within:text-primary transition-colors" />
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 w-5 h-5 text-muted pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSearchQuery(val);
-                  if (val.trim()) {
-                    navigate(`/search?q=${encodeURIComponent(val.trim())}`);
-                  }
-                }}
-                placeholder="Search Marvel, Star Wars, Harry Potter..."
-                className="w-full bg-card/80 backdrop-blur-xl border border-white/10 rounded-2xl pl-14 pr-6 py-5 text-lg text-white placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/30 transition-all shadow-2xl shadow-black/20"
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search Marvel, Star Wars, Batman..."
+                className="w-full pl-12 pr-28 py-4 bg-surface/80 backdrop-blur-md border border-white/10 rounded-2xl text-white placeholder-muted focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-xl"
               />
+              <button
+                type="submit"
+                className="absolute right-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-medium rounded-xl text-sm transition-colors shadow-md"
+              >
+                Search
+              </button>
             </div>
           </motion.form>
 
-          {/* Quick Tags */}
+          {/* Quick tags */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-wrap justify-center gap-2 mt-6"
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-6 flex flex-wrap items-center justify-center gap-2"
           >
-            {['Marvel', 'Star Wars', 'Harry Potter', 'DC', 'X-Men'].map((tag) => (
+            <span className="text-xs text-muted">Popular:</span>
+            {['Marvel', 'Star Wars', 'DC', 'Harry Potter', 'Fast & Furious'].map((tag) => (
               <button
                 key={tag}
                 onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
@@ -126,18 +131,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── 2. AI Advisor ──────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <AskCineOrderSection />
-      </section>
-
-      {/* ─── 3. Continue Preparation ────────────────────────────── */}
+      {/* ─── 2. Continue Preparation ────────────────────────────── */}
       <ContinuePreparationWidget />
 
-      {/* ─── 4. Upcoming Releases ───────────────────────────────── */}
+      {/* ─── 3. Upcoming Releases ───────────────────────────────── */}
       <UpcomingHomeSection />
 
-      {/* ─── 5. Featured Franchises ─────────────────────────────── */}
+      {/* ─── 4. Featured Franchises ─────────────────────────────── */}
       <FranchiseSection
         title="Featured Franchises"
         icon={<Star className="w-5 h-5 text-yellow-400" />}
@@ -145,10 +145,10 @@ export default function HomePage() {
         onFranchiseClick={(f) => navigate(`/franchise/${f.slug}`)}
       />
 
-      {/* ─── 7. Statistics ──────────────────────────────────────── */}
+      {/* ─── 5. Statistics ──────────────────────────────────────── */}
       <StatsSection />
 
-      {/* ─── 8. Dynamic Personalized CTA Section ───────────────── */}
+      {/* ─── 6. Dynamic Personalized CTA Section ───────────────── */}
       <DynamicCTASection />
     </>
   );
@@ -164,14 +164,6 @@ function DynamicCTASection() {
   const watchedCount = useMemo(() => {
     return Object.keys(watchHistory).filter((k) => watchHistory[k]).length;
   }, [watchHistory]);
-
-  const exampleQuestions = [
-    'Can I skip Loki?',
-    'Prepare me for Avengers: Secret Wars.',
-    'I only have 6 hours.',
-    'Explain the Multiverse.',
-    'What should I watch after No Way Home?',
-  ];
 
   let planProgressPct = 0;
   if (activePlan && activePlan.schedule.length > 0) {
@@ -214,31 +206,12 @@ function DynamicCTASection() {
             </button>
 
             <button
-              onClick={() => navigate('/assistant')}
+              onClick={() => navigate('/search')}
               className="inline-flex items-center gap-2.5 bg-surface hover:bg-white/10 text-white border border-white/10 hover:border-white/20 px-7 py-3.5 rounded-xl text-sm sm:text-base font-bold transition-all"
             >
-              <Sparkles className="w-5 h-5 text-primary" />
-              Ask AI Advisor
+              <Search className="w-5 h-5 text-primary" />
+              Explore Franchises
             </button>
-          </div>
-
-          {/* AI Example Question Chips */}
-          <div className="pt-6 border-t border-white/10 space-y-3 relative z-10">
-            <p className="text-xs text-muted font-medium flex items-center justify-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              Try asking CineOrder AI:
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto">
-              {exampleQuestions.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => navigate(`/assistant?q=${encodeURIComponent(q)}`)}
-                  className="px-3.5 py-1.5 rounded-full bg-surface/80 hover:bg-white/10 border border-white/10 text-xs text-muted hover:text-white transition-all hover:scale-105"
-                >
-                  "{q}"
-                </button>
-              ))}
-            </div>
           </div>
         </motion.div>
       </section>
@@ -279,31 +252,12 @@ function DynamicCTASection() {
             </button>
 
             <button
-              onClick={() => navigate('/assistant')}
+              onClick={() => navigate('/search')}
               className="inline-flex items-center gap-2.5 bg-surface hover:bg-white/10 text-white border border-white/10 hover:border-white/20 px-7 py-3.5 rounded-xl text-sm sm:text-base font-bold transition-all"
             >
-              <Sparkles className="w-5 h-5 text-primary" />
-              Ask AI Advisor
+              <Search className="w-5 h-5 text-primary" />
+              Explore Franchises
             </button>
-          </div>
-
-          {/* AI Example Question Chips */}
-          <div className="pt-6 border-t border-white/10 space-y-3 relative z-10">
-            <p className="text-xs text-muted font-medium flex items-center justify-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              Try asking CineOrder AI:
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto">
-              {exampleQuestions.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => navigate(`/assistant?q=${encodeURIComponent(q)}`)}
-                  className="px-3.5 py-1.5 rounded-full bg-surface/80 hover:bg-white/10 border border-white/10 text-xs text-muted hover:text-white transition-all hover:scale-105"
-                >
-                  "{q}"
-                </button>
-              ))}
-            </div>
           </div>
         </motion.div>
       </section>
@@ -335,39 +289,20 @@ function DynamicCTASection() {
 
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2 relative z-10">
           <button
-            onClick={() => navigate('/assistant')}
+            onClick={() => navigate('/planner')}
             className="inline-flex items-center gap-2.5 btn-primary-gradient px-8 py-4 rounded-xl text-sm sm:text-base font-bold shadow-lg shadow-primary/25 hover:scale-105 transition-all"
           >
-            <Sparkles className="w-5 h-5 text-white" />
-            Ask AI Advisor
+            <Calendar className="w-5 h-5 text-white" />
+            Start Planning
           </button>
 
           <button
-            onClick={() => navigate('/planner')}
+            onClick={() => navigate('/search')}
             className="inline-flex items-center gap-2.5 bg-surface hover:bg-white/10 text-white border border-white/10 hover:border-white/20 px-7 py-3.5 rounded-xl text-sm sm:text-base font-bold transition-all"
           >
-            <Calendar className="w-5 h-5 text-primary" />
-            Start Planning
+            <Search className="w-5 h-5 text-primary" />
+            Explore Watch Orders
           </button>
-        </div>
-
-        {/* AI Example Question Chips */}
-        <div className="pt-6 border-t border-white/10 space-y-3 relative z-10">
-          <p className="text-xs text-muted font-medium flex items-center justify-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            Try asking CineOrder AI:
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto">
-            {exampleQuestions.map((q) => (
-              <button
-                key={q}
-                onClick={() => navigate(`/assistant?q=${encodeURIComponent(q)}`)}
-                className="px-3.5 py-1.5 rounded-full bg-surface/80 hover:bg-white/10 border border-white/10 text-xs text-muted hover:text-white transition-all hover:scale-105"
-              >
-                "{q}"
-              </button>
-            ))}
-          </div>
         </div>
       </motion.div>
     </section>

@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const insidiousFranchise: Franchise = {
   id: 'insidious',
@@ -118,14 +119,17 @@ export const insidiousContent: Content[] = [
   }),
 ];
 
-export const insidiousWatchOrders: WatchOrder[] = [
-  // Release Order
-  buildWatchOrder({ id: 'wo-ins-rel-1', franchise_id: 'insidious', content_id: 'ins-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'wo-ins-rel-2', franchise_id: 'insidious', content_id: 'ins-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'wo-ins-rel-3', franchise_id: 'insidious', content_id: 'ins-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'wo-ins-rel-4', franchise_id: 'insidious', content_id: 'ins-4', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'wo-ins-rel-5', franchise_id: 'insidious', content_id: 'ins-5', order_type: 'release', position: 5 }),
-  buildWatchOrder({ id: 'wo-ins-rel-6', franchise_id: 'insidious', content_id: 'ins-6', order_type: 'release', position: 6 }),
+const sortedInsidiousForRelease = [...insidiousContent].sort(compareReleaseDates);
+
+export const insidiousWatchOrders: WatchOrder[] = sortedInsidiousForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `wo-ins-rel-${index + 1}`,
+    franchise_id: 'insidious',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   // Chronological Order
   buildWatchOrder({ id: 'wo-ins-chr-1', franchise_id: 'insidious', content_id: 'ins-3', order_type: 'chronological', position: 1, notes: 'Prequel origin of Elise Rainier and Spectral Sightings.' }),
@@ -142,4 +146,4 @@ export const insidiousWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'wo-ins-rec-4', franchise_id: 'insidious', content_id: 'ins-4', order_type: 'recommended', position: 4 }),
   buildWatchOrder({ id: 'wo-ins-rec-5', franchise_id: 'insidious', content_id: 'ins-5', order_type: 'recommended', position: 5 }),
   buildWatchOrder({ id: 'wo-ins-rec-6', franchise_id: 'insidious', content_id: 'ins-6', order_type: 'recommended', position: 6 }),
-];
+]);

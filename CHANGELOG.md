@@ -5,6 +5,24 @@ All notable changes to the CineOrder Recommendation Engine and Framework will be
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.1] Universal Release-State & Timezone Detection - 2026-08-19
+
+### Fixed
+- **Lanterns Post-Premiere Lifecycle Detection**: Resolved bug where *Lanterns* remained classified as `UPCOMING` following its August 16, 2026 premiere on HBO/Max.
+- **Universal Date Precedence in Lifecycle Classifier**: Refactored `classifyLifecycle` in `src/lib/metadataRefresh.ts` so elapsed release dates promote titles deterministically to `theatrically_released` or `subscription_available` without being blocked by seed status.
+- **Countdown & Hook Override Removal**: Corrected `calculateCountdown` (`src/lib/upcomingUtils.ts`) and `useUpcomingReleases` (`src/hooks/useUpcomingReleases.ts`) so elapsed dates output `status: 'Released'` and `"Now Available"`.
+- **Dynamic Helper Promotion**: Updated `buildContent` in `src/data/franchises/utils.ts` to automatically derive released lifecycle and OTT availability when confirmed release dates pass.
+
+### Added
+- **Market & Timezone-Aware Instant Engine** (`src/lib/dateUtils.ts`): Added `ReleaseInstantOptions`, `getMarketReleaseDate`, and `isReleaseInstantPassed` supporting broadcast premiere times (e.g. US Eastern 21:00 ET converting to India next-day IST morning).
+- **10-Scenario Lifecycle Regression Suite** (`src/__tests__/lanternsLifecycle.test.ts`): Permanent automated verification covering pre-premiere, post-premiere, timezone conversion, weekly series rollout integrity, movie lifecycle preservation, future/TBA series handling, and zero OTT fabrication.
+
+### Verified
+- **Zero Framework Creep**: 5/5 frozen framework SHA-256 hashes bit-for-bit identical.
+- **Release Gate Passed**: 7/7 release gates and 40/40 test suites pass with 0 errors.
+
+---
+
 ## [v1.2] MCU v1.0 Release - 2026-08-06
 
 ### Added

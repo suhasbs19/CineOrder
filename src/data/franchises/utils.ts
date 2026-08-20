@@ -1,5 +1,5 @@
 import type { Content, ContentType, WatchOrder, OrderType, StreamingProvider } from '@/types';
-import { isPastDate } from '@/lib/dateUtils';
+import { isPastDate, normalizeDateStr } from '@/lib/dateUtils';
 
 export function sp(contentId: string, names: string[]): StreamingProvider[] {
   const providerLogos: Record<string, string> = {
@@ -90,13 +90,21 @@ export function buildContent({
   release_metadata_checked_at?: string;
   ott_metadata_checked_at?: string;
 }): Content {
+  const normRelDate = normalizeDateStr(theatrical_release_date || release_date);
+  const isDatePassed = Boolean(normRelDate) && isPastDate(normRelDate);
+
+  const isTheatricalReleased = isDatePassed || (theatrical_released === true) || (theatrical_released === undefined && status === 'released');
+
+  const resolvedStatus = (isDatePassed || status === 'released' || theatrical_released === true)
+    ? 'released'
+    : status;
+
+  // Explicit false on digital and subscription overrides provider inference
+  const isExplicitlyNoOtt = digital_available === false && subscription_streaming_available === false;
+
   const isOtt = ott_available !== undefined
     ? ott_available
-    : (status === 'released' && providers.length > 0 && !providers.includes('Theaters Only') && !providers.includes('None'));
-
-  const isTheatricalReleased = theatrical_released !== undefined
-    ? theatrical_released
-    : (status === 'released' || (status !== 'upcoming' && status !== 'in_production' && status !== 'tba' && status !== 'planned' && Boolean(release_date) && isPastDate(release_date)));
+    : (!isExplicitlyNoOtt && (resolvedStatus === 'released' || isTheatricalReleased) && providers.length > 0 && !providers.includes('Theaters Only') && !providers.includes('None'));
 
   const isDigAvail = digital_available !== undefined
     ? digital_available
@@ -115,7 +123,7 @@ export function buildContent({
     if (isSubAvail) computedLifecycle = 'subscription_available';
     else if (isDigAvail) computedLifecycle = 'digital_available';
     else if (isTheatricalReleased) computedLifecycle = 'theatrically_released';
-    else if (status === 'upcoming' || status === 'in_production') computedLifecycle = 'upcoming';
+    else if (resolvedStatus === 'upcoming' || resolvedStatus === 'in_production' || Boolean(normRelDate)) computedLifecycle = 'upcoming';
     else computedLifecycle = 'announced';
   }
 
@@ -133,7 +141,7 @@ export function buildContent({
     episode_count,
     season_count,
     rating,
-    status,
+    status: resolvedStatus,
     genres,
     director,
     cast: cast.map((c) => ({

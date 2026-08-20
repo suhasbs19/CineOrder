@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const evilDeadFranchise: Franchise = {
   id: 'evil-dead',
@@ -134,15 +135,17 @@ export const evilDeadContent: Content[] = [
   }),
 ];
 
-export const evilDeadWatchOrders: WatchOrder[] = [
-  // Release Order
-  buildWatchOrder({ id: 'wo-ed-rel-1', franchise_id: 'evil-dead', content_id: 'ed-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'wo-ed-rel-2', franchise_id: 'evil-dead', content_id: 'ed-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'wo-ed-rel-3', franchise_id: 'evil-dead', content_id: 'ed-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'wo-ed-rel-4', franchise_id: 'evil-dead', content_id: 'ed-4', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'wo-ed-rel-5', franchise_id: 'evil-dead', content_id: 'ed-ash-vs-ed', order_type: 'release', position: 5 }),
-  buildWatchOrder({ id: 'wo-ed-rel-6', franchise_id: 'evil-dead', content_id: 'ed-rise', order_type: 'release', position: 6 }),
-  buildWatchOrder({ id: 'wo-ed-rel-7', franchise_id: 'evil-dead', content_id: 'ed-burn', order_type: 'release', position: 7 }),
+const sortedEvilDeadForRelease = [...evilDeadContent].sort(compareReleaseDates);
+
+export const evilDeadWatchOrders: WatchOrder[] = sortedEvilDeadForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `wo-ed-rel-${index + 1}`,
+    franchise_id: 'evil-dead',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   // Chronological Order
   buildWatchOrder({ id: 'wo-ed-chr-1', franchise_id: 'evil-dead', content_id: 'ed-1', order_type: 'chronological', position: 1 }),
@@ -161,4 +164,4 @@ export const evilDeadWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'wo-ed-rec-5', franchise_id: 'evil-dead', content_id: 'ed-4', order_type: 'recommended', position: 5, notes: 'Gory 2013 reboot expansion.' }),
   buildWatchOrder({ id: 'wo-ed-rec-6', franchise_id: 'evil-dead', content_id: 'ed-rise', order_type: 'recommended', position: 6, notes: 'Urban apartment expansion of the Necronomicon curse.' }),
   buildWatchOrder({ id: 'wo-ed-rec-7', franchise_id: 'evil-dead', content_id: 'ed-burn', order_type: 'recommended', position: 7, notes: 'Sequel to Evil Dead Rise.' }),
-];
+]);

@@ -1,5 +1,7 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { titleNodes, storyEdges, type StoryEdge, type TitleNode } from '@/data/cineOrderKnowledgeGraph';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const jurassicParkFranchise: Franchise = {
   id: 'jurassic-park',
@@ -10,8 +12,8 @@ export const jurassicParkFranchise: Franchise = {
   banner_url: 'https://image.tmdb.org/t/p/w1280/9e3y2n57n84e3W92x9h4n55K.jpg',
   tmdb_collection_id: 328,
   total_movies: 7,
-  total_series: 1,
-  total_runtime: 1040,
+  total_series: 2,
+  total_runtime: 1064,
   status: 'active',
   created_at: '2024-01-01',
   updated_at: '2024-01-01',
@@ -140,9 +142,83 @@ export const jurassicParkContent: Content[] = [
     director: 'Gareth Edwards',
     providers: ['Peacock'],
   }),
+  buildContent({
+    id: 'jp-chaos-theory',
+    franchise_id: 'jurassic-park',
+    tmdb_id: 237512,
+    title: 'Jurassic World: Chaos Theory',
+    type: 'series',
+    poster_url: 'https://image.tmdb.org/t/p/w500/c2Od0cY2IeayDj5osUxZSAD1QK.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/qjPC0KYEhdWAIPmCtAkg0j1iJXC.jpg',
+    overview: 'Six years after the events of Camp Cretaceous, the members of the Nublar Six struggle to find their footing off the islands, navigating a world now filled with dinosaurs and people who want to hurt them.',
+    release_date: '2024-05-24',
+    theatrical_release_date: '2024-05-24',
+    runtime: 24,
+    rating: 8.1,
+    status: 'released',
+    theatrical_released: true,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
+    providers: ['Netflix'],
+  }),
 ];
 
-export const jurassicParkWatchOrders: WatchOrder[] = jurassicParkContent.map((item, index) =>
+const jpExtraTitleNodes: Record<string, TitleNode> = {
+  'jp-chaos-theory': {
+    id: 'jp-chaos-theory',
+    title: 'Jurassic World: Chaos Theory',
+    type: 'tv-series',
+    releaseDate: '2024-05-24',
+    universe: 'Jurassic Park',
+    characters: ['Darius Bowman', 'Ben Pincus', 'Yaz Fadoula', 'Sammy Gutierrez', 'Brooklynn', 'Kenji Kon'],
+    villains: ['Broker Syndicate', 'Atrociraptor Handlers'],
+    organizations: ['DPW (Department of Prehistoric Wildlife)'],
+    objects: ['Dinosaur Tracking Beacon'],
+    storyArcs: ['Nublar Six Conspiracy'],
+    spoilerFreeContext: 'The Nublar Six reunite six years later to unravel a global dinosaur conspiracy.',
+  },
+};
+
+const jpExtraStoryEdges: StoryEdge[] = [
+  {
+    sourceId: 'jp-camp-cretaceous',
+    targetId: 'jp-chaos-theory',
+    relationship: 'direct-sequel',
+    strength: 'required',
+    confidence: 'confirmed',
+    reason: 'Direct sequel series following the Nublar Six six years after their rescue from Isla Nublar.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'primary',
+    recommendationEvidence: {
+      shortReason: 'Direct continuation following the Nublar Six characters from Camp Cretaceous.',
+      detailedReasons: [
+        'Essential for understanding the bond, trauma, and character dynamics of Darius, Ben, Yaz, Sammy, Kenji, and Brooklynn.',
+        'Directly continues the storyline six years after their escape from Isla Nublar.',
+      ],
+      source: 'editorial',
+    },
+  },
+];
+
+for (const [key, node] of Object.entries(jpExtraTitleNodes)) {
+  if (!titleNodes[key]) {
+    titleNodes[key] = node;
+  }
+}
+
+for (const edge of jpExtraStoryEdges) {
+  const exists = storyEdges.some(
+    (e) => e.sourceId === edge.sourceId && e.targetId === edge.targetId && e.relationship === edge.relationship
+  );
+  if (!exists) {
+    storyEdges.push(edge);
+  }
+}
+
+const sortedJurassicForRelease = [...jurassicParkContent].sort(compareReleaseDates);
+
+export const jurassicParkWatchOrders: WatchOrder[] = sortedJurassicForRelease.map((item, index) =>
   buildWatchOrder({
     id: `jp-rel-${index + 1}`,
     franchise_id: 'jurassic-park',
@@ -151,7 +227,7 @@ export const jurassicParkWatchOrders: WatchOrder[] = jurassicParkContent.map((it
     position: index + 1,
   })
 ).concat(
-  jurassicParkContent.map((item, index) =>
+  sortedJurassicForRelease.map((item, index) =>
     buildWatchOrder({
       id: `jp-chr-${index + 1}`,
       franchise_id: 'jurassic-park',

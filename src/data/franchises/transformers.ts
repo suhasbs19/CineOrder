@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const transformersFranchise: Franchise = {
   id: 'transformers',
@@ -162,17 +163,17 @@ export const transformersContent: Content[] = [
   }),
 ];
 
-export const transformersWatchOrders: WatchOrder[] = [
-  // Release Order
-  buildWatchOrder({ id: 'tf-rel-1', franchise_id: 'transformers', content_id: 'tf-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'tf-rel-2', franchise_id: 'transformers', content_id: 'tf-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'tf-rel-3', franchise_id: 'transformers', content_id: 'tf-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'tf-rel-4', franchise_id: 'transformers', content_id: 'tf-prime', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'tf-rel-5', franchise_id: 'transformers', content_id: 'tf-4', order_type: 'release', position: 5 }),
-  buildWatchOrder({ id: 'tf-rel-6', franchise_id: 'transformers', content_id: 'tf-5', order_type: 'release', position: 6 }),
-  buildWatchOrder({ id: 'tf-rel-7', franchise_id: 'transformers', content_id: 'tf-bumblebee', order_type: 'release', position: 7 }),
-  buildWatchOrder({ id: 'tf-rel-8', franchise_id: 'transformers', content_id: 'tf-rotb', order_type: 'release', position: 8 }),
-  buildWatchOrder({ id: 'tf-rel-9', franchise_id: 'transformers', content_id: 'tf-one', order_type: 'release', position: 9 }),
+const sortedTransformersForRelease = [...transformersContent].sort(compareReleaseDates);
+
+export const transformersWatchOrders: WatchOrder[] = sortedTransformersForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `tf-rel-${index + 1}`,
+    franchise_id: 'transformers',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   // Chronological Order
   buildWatchOrder({ id: 'tf-chr-1', franchise_id: 'transformers', content_id: 'tf-one', order_type: 'chronological', position: 1, notes: 'Prehistoric Cybertron origin' }),
@@ -195,7 +196,7 @@ export const transformersWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'tf-rec-7', franchise_id: 'transformers', content_id: 'tf-3', order_type: 'recommended', position: 7 }),
   buildWatchOrder({ id: 'tf-rec-8', franchise_id: 'transformers', content_id: 'tf-4', order_type: 'recommended', position: 8 }),
   buildWatchOrder({ id: 'tf-rec-9', franchise_id: 'transformers', content_id: 'tf-5', order_type: 'recommended', position: 9 }),
-];
+]);
 
 export const franchise = transformersFranchise;
 export const content = transformersContent;

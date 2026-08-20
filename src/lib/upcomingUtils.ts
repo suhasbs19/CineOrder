@@ -1,7 +1,8 @@
 import type { Content } from '@/types';
 import type { UpcomingItem, ReleaseStatus } from '@/hooks/useUpcomingReleases';
 import { computeOttAvailable, classifyLifecycle } from './metadataRefresh';
-import { getDaysDifference, normalizeDateStr } from './dateUtils';
+import { getDaysDifference, normalizeDateStr, type ReleaseInstantOptions } from './dateUtils';
+import { compareReleaseDates } from './releaseOrdering';
 
 export interface CountdownInfo {
   daysTotal: number | null;
@@ -26,10 +27,12 @@ export function formatReleaseDate(dateStr?: string): string {
   });
 }
 
-export function calculateCountdown(dateStr?: string, seedStatus?: string, asOfDate?: string): CountdownInfo {
-  const st = (seedStatus || '').toLowerCase();
-  const isSeedUpcoming = st === 'upcoming' || st === 'in_production' || st === 'tba' || st === 'planned';
-
+export function calculateCountdown(
+  dateStr?: string,
+  _seedStatus?: string,
+  asOfDate?: string,
+  options?: ReleaseInstantOptions
+): CountdownInfo {
   if (!dateStr) {
     return {
       daysTotal: null,
@@ -40,7 +43,7 @@ export function calculateCountdown(dateStr?: string, seedStatus?: string, asOfDa
     };
   }
 
-  const daysDiff = getDaysDifference(dateStr, asOfDate);
+  const daysDiff = getDaysDifference(dateStr, asOfDate, options);
   const formattedDate = formatReleaseDate(dateStr);
 
   if (daysDiff === null) {
@@ -54,15 +57,6 @@ export function calculateCountdown(dateStr?: string, seedStatus?: string, asOfDa
   }
 
   if (daysDiff < 0) {
-    if (isSeedUpcoming) {
-      return {
-        daysTotal: null,
-        daysSinceRelease: null,
-        text: 'Release date pending',
-        formattedDate,
-        status: 'Upcoming',
-      };
-    }
     const daysSinceRelease = Math.abs(daysDiff);
     return {
       daysTotal: daysDiff,
@@ -208,20 +202,7 @@ export function isRecentlyReleasedItem(item: UpcomingItem | Content, maxDays: nu
  */
 export function getUpcomingTitles(items: UpcomingItem[], asOfDate?: string): UpcomingItem[] {
   const filtered = items.filter((item) => isUpcomingItem(item, asOfDate));
-
-  return filtered.sort((a, b) => {
-    const aStatus = a.status || (a.content?.status || '');
-    const bStatus = b.status || (b.content?.status || '');
-    const aCalc = calculateCountdown(a.release_date, aStatus, asOfDate);
-    const bCalc = calculateCountdown(b.release_date, bStatus, asOfDate);
-
-    if (aCalc.daysTotal !== null && bCalc.daysTotal !== null) {
-      return aCalc.daysTotal - bCalc.daysTotal;
-    }
-    if (aCalc.daysTotal !== null) return -1;
-    if (bCalc.daysTotal !== null) return 1;
-    return a.title.localeCompare(b.title);
-  });
+  return filtered.sort(compareReleaseDates);
 }
 
 /**
@@ -231,8 +212,6 @@ export function getRecentlyReleasedTitles(items: UpcomingItem[], maxDays: number
   const filtered = items.filter((item) => isRecentlyReleasedItem(item, maxDays, asOfDate));
 
   return filtered.sort((a, b) => {
-    const aDate = Date.parse(a.release_date || '');
-    const bDate = Date.parse(b.release_date || '');
-    return bDate - aDate;
+    return compareReleaseDates(b, a); // Descending (most recent first)
   });
 }

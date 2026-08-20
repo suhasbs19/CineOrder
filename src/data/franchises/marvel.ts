@@ -1,5 +1,7 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { titleNodes, storyEdges, type StoryEdge, type TitleNode } from '@/data/cineOrderKnowledgeGraph';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const mcuFranchise: Franchise = {
   id: 'marvel-cinematic-universe',
@@ -10,7 +12,7 @@ export const mcuFranchise: Franchise = {
   banner_url: 'https://image.tmdb.org/t/p/w1280/muth4OYamE2aB116Z9y2yFRm2fW.jpg',
   tmdb_collection_id: null,
   total_movies: 37,
-  total_series: 12,
+  total_series: 14,
   total_runtime: 12240,
   status: 'active',
   created_at: '2024-01-01',
@@ -901,9 +903,159 @@ export const mcuContent: Content[] = [
     status: 'upcoming',
     providers: ['Disney+'],
   }),
+  buildContent({
+    id: 'mcu-visionquest',
+    franchise_id: 'marvel-cinematic-universe',
+    tmdb_id: 1342110,
+    title: "VisionQuest",
+    type: 'series',
+    poster_url: 'https://image.tmdb.org/t/p/w500/lDe6FlUsSjMttuHN846ZOf7vXOh.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/hgo15B8eUnbEjszVV1qdV8sGz9S.jpg',
+    overview: "Paul Bettany returns as White Vision exploring his newfound memories and existential identity after Westview.",
+    release_date: '2026-10-14',
+    theatrical_release_date: '2026-10-14',
+    runtime: 120,
+    rating: 8,
+    status: 'upcoming',
+    theatrical_released: false,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
+    director: "Terry Matalas",
+    providers: ["Disney+"],
+  }),
+  buildContent({
+    id: 'mcu-ironheart',
+    franchise_id: 'marvel-cinematic-universe',
+    tmdb_id: 114471,
+    title: 'Ironheart',
+    type: 'series',
+    poster_url: 'https://image.tmdb.org/t/p/w500/dOh6MJpdlQhYpLBhzhNQeYGKTZ5.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/vno2LrEQr3lTOk3U1G1ihZsy64b.jpg',
+    overview: 'Genius teenage inventor Riri Williams creates the most advanced suit of armor since Iron Man.',
+    release_date: '2025-06-24',
+    theatrical_release_date: '2025-06-24',
+    runtime: 45,
+    rating: 7.5,
+    status: 'released',
+    theatrical_released: true,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
+    providers: ['Disney+'],
+  }),
+  buildContent({
+    id: 'mcu-eyes-of-wakanda',
+    franchise_id: 'marvel-cinematic-universe',
+    tmdb_id: 241388,
+    title: 'Eyes of Wakanda',
+    type: 'animated',
+    poster_url: 'https://image.tmdb.org/t/p/w500/yuOfb1MgnaGPa4guzV0n1IFYVGN.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/cWO5NDkKqpOuwxu4vFc4PtL8aNF.jpg',
+    overview: 'Animated anthology exploring the secret history of Wakandan warriors throughout the ages.',
+    release_date: '2025-08-01',
+    theatrical_release_date: '2025-08-01',
+    runtime: 30,
+    rating: 7.5,
+    status: 'released',
+    theatrical_released: true,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
+    providers: ['Disney+'],
+  }),
 ];
 
-export const mcuWatchOrders: WatchOrder[] = mcuContent.map((item, index) =>
+const mcuExtraTitleNodes: Record<string, TitleNode> = {
+  'mcu-ironheart': {
+    id: 'mcu-ironheart',
+    title: 'Ironheart',
+    type: 'tv-series',
+    releaseDate: '2025-06-24',
+    universe: 'Marvel Cinematic Universe',
+    saga: 'The Multiverse Saga',
+    phase: 5,
+    characters: ['Riri Williams / Ironheart', 'Parker Robbins / The Hood'],
+    villains: ['Parker Robbins / The Hood'],
+    organizations: ['M.I.T.'],
+    objects: ['Ironheart Armor Suit'],
+    storyArcs: ['Multiverse Saga', 'Technology vs Magic Arc'],
+    spoilerFreeContext: 'Riri Williams returns to Chicago and confronts Parker Robbins in a clash between tech and dark magic.',
+  },
+  'mcu-eyes-of-wakanda': {
+    id: 'mcu-eyes-of-wakanda',
+    title: 'Eyes of Wakanda',
+    type: 'tv-series',
+    releaseDate: '2025-08-01',
+    universe: 'Marvel Cinematic Universe',
+    saga: 'The Multiverse Saga',
+    phase: 5,
+    characters: ['Hatut Zaraze Warriors', 'War Dogs'],
+    villains: ['Artifact Thieves'],
+    organizations: ['Hatut Zaraze', 'War Dogs', 'Wakandan Royal Council'],
+    objects: ['Vibranium Artifacts', 'Spear of Bashenga'],
+    storyArcs: ['Wakandan Ancient Chronicles'],
+    spoilerFreeContext: 'Chronicles historical Wakandan operatives traveling the world across history to retrieve stolen Vibranium.',
+  },
+};
+
+const mcuExtraStoryEdges: StoryEdge[] = [
+  {
+    sourceId: 'mcu-wakanda-forever',
+    targetId: 'mcu-ironheart',
+    relationship: 'story-continuation',
+    strength: 'required',
+    confidence: 'confirmed',
+    reason: 'Riri Williams constructed her prototype armor in MIT and Wakanda before returning home to forge her own legacy.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'primary',
+    recommendationEvidence: {
+      shortReason: 'Introduces Riri Williams (Ironheart) and her Vibranium detector armor prototype.',
+      detailedReasons: [
+        'Establishes Riri origin as a young super-genius inventor targetted by Namor and protected by Shuri.',
+        'Explains why she built her advanced armor suit using Stark-inspired designs and Wakandan resources.',
+      ],
+      source: 'editorial',
+    },
+  },
+  {
+    sourceId: 'mcu-black-panther',
+    targetId: 'mcu-eyes-of-wakanda',
+    relationship: 'world-building',
+    strength: 'strong',
+    confidence: 'confirmed',
+    reason: 'Explores the deep lore, War Dog intelligence network, and ancient traditions of Wakanda established in Black Panther.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'supporting',
+    recommendationEvidence: {
+      shortReason: 'Provides world-building context for Wakanda sacred Vibranium legacy and War Dog network.',
+      detailedReasons: [
+        'Explores historical eras of the Black Panther mantle and Hatut Zaraze secret police.',
+        'Enriches the world-building of Vibranium cultural reverence across human history.',
+      ],
+      source: 'editorial',
+    },
+  },
+];
+
+for (const [key, node] of Object.entries(mcuExtraTitleNodes)) {
+  if (!titleNodes[key]) {
+    titleNodes[key] = node;
+  }
+}
+
+for (const edge of mcuExtraStoryEdges) {
+  const exists = storyEdges.some(
+    (e) => e.sourceId === edge.sourceId && e.targetId === edge.targetId && e.relationship === edge.relationship
+  );
+  if (!exists) {
+    storyEdges.push(edge);
+  }
+}
+
+const sortedMcuForRelease = [...mcuContent].sort(compareReleaseDates);
+
+export const mcuWatchOrders: WatchOrder[] = sortedMcuForRelease.map((item, index) =>
   buildWatchOrder({
     id: `mcu-rel-${index + 1}`,
     franchise_id: 'marvel-cinematic-universe',
@@ -912,7 +1064,7 @@ export const mcuWatchOrders: WatchOrder[] = mcuContent.map((item, index) =>
     position: index + 1,
   })
 ).concat(
-  mcuContent.map((item, index) =>
+  sortedMcuForRelease.map((item, index) =>
     buildWatchOrder({
       id: `mcu-chr-${index + 1}`,
       franchise_id: 'marvel-cinematic-universe',

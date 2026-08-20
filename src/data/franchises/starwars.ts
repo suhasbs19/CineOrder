@@ -1,5 +1,7 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { titleNodes, storyEdges, type StoryEdge, type TitleNode } from '@/data/cineOrderKnowledgeGraph';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const starwarsFranchise: Franchise = {
   id: 'star-wars',
@@ -10,7 +12,7 @@ export const starwarsFranchise: Franchise = {
   banner_url: 'https://image.tmdb.org/t/p/w1280/p2fRZzxla6NoBmIH03yKrGZq7BE.jpg',
   tmdb_collection_id: 10,
   total_movies: 12,
-  total_series: 11,
+  total_series: 12,
   total_runtime: 6480,
   status: 'active',
   created_at: '2024-01-01',
@@ -394,13 +396,104 @@ export const starwarsContent: Content[] = [
     status: 'released',
     theatrical_released: true,
     ott_available: false,
-    lifecycle_status: 'theatrically_released',
     director: 'Jon Favreau',
+    providers: ['Disney+'],
+  }),
+  buildContent({
+    id: 'sw-tales-empire',
+    franchise_id: 'star-wars',
+    tmdb_id: 251091,
+    title: 'Star Wars: Tales of the Empire',
+    type: 'series',
+    poster_url: 'https://image.tmdb.org/t/p/w500/qA28nLteurVboSSzltuyYt1lvlC.jpg',
+    backdrop_url: 'https://image.tmdb.org/t/p/w1280/sMxOqjwaHHXuBnHkvVyzqcOPMVF.jpg',
+    overview: 'A six-episode journey into the fearsome Galactic Empire through the eyes of two warriors on divergent paths: nightsister Morgan Elsbeth and former Jedi Barriss Offee.',
+    release_date: '2024-05-04',
+    theatrical_release_date: '2024-05-04',
+    runtime: 15,
+    rating: 7.6,
+    status: 'released',
+    theatrical_released: true,
+    ott_available: false,
+    digital_available: false,
+    subscription_streaming_available: false,
     providers: ['Disney+'],
   }),
 ];
 
-export const starwarsWatchOrders: WatchOrder[] = starwarsContent.map((item, index) =>
+const swExtraTitleNodes: Record<string, TitleNode> = {
+  'sw-tales-empire': {
+    id: 'sw-tales-empire',
+    title: 'Star Wars: Tales of the Empire',
+    type: 'tv-series',
+    releaseDate: '2024-05-04',
+    universe: 'Star Wars',
+    characters: ['Morgan Elsbeth', 'Barriss Offee', 'Grand Inquisitor', 'Darth Vader', 'Thrawn'],
+    villains: ['Darth Vader', 'Grand Inquisitor'],
+    organizations: ['Galactic Empire', 'Inquisitorius', 'Nightsisters of Dathomir'],
+    objects: ['Inquisitor Lightsaber', 'Beskar Spear'],
+    storyArcs: ['Imperial Inquisitorius Chronicles', 'Fall of the Nightsisters'],
+    spoilerFreeContext: 'Explores the divergent fates of Morgan Elsbeth and Barriss Offee within the Galactic Empire.',
+  },
+};
+
+const swExtraStoryEdges: StoryEdge[] = [
+  {
+    sourceId: 'sw-tcw-series',
+    targetId: 'sw-tales-empire',
+    relationship: 'story-continuation',
+    strength: 'required',
+    confidence: 'confirmed',
+    reason: 'Follows Barriss Offee imprisonment after bombing the Jedi Temple in The Clone Wars and her recruitment into the Inquisitorius.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'primary',
+    recommendationEvidence: {
+      shortReason: 'Resolves Barriss Offee fate following her fall and trial in The Clone Wars Season 5.',
+      detailedReasons: [
+        'Picks up Barriss Offee story from the Clone Wars Season 5 Jedi Temple bombing climax.',
+        'Explains her recruitment into the Imperial Inquisitorius during Order 66 aftermath.',
+      ],
+      source: 'editorial',
+    },
+  },
+  {
+    sourceId: 'sw-tales-empire',
+    targetId: 'sw-ahsoka',
+    relationship: 'story-continuation',
+    strength: 'strong',
+    confidence: 'confirmed',
+    reason: 'Reveals Morgan Elsbeth backstory, survival of the Dathomir massacre, and alliance with Grand Admiral Thrawn.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'primary',
+    recommendationEvidence: {
+      shortReason: 'Provides essential backstory for Morgan Elsbeth devotion to Thrawn in Ahsoka.',
+      detailedReasons: [
+        'Depicts General Grievous massacre of the Nightsisters and young Morgan survival.',
+        'Establishes how Morgan forged ties with Thrawn and earned her Beskar spear.',
+      ],
+      source: 'editorial',
+    },
+  },
+];
+
+for (const [key, node] of Object.entries(swExtraTitleNodes)) {
+  if (!titleNodes[key]) {
+    titleNodes[key] = node;
+  }
+}
+
+for (const edge of swExtraStoryEdges) {
+  const exists = storyEdges.some(
+    (e) => e.sourceId === edge.sourceId && e.targetId === edge.targetId && e.relationship === edge.relationship
+  );
+  if (!exists) {
+    storyEdges.push(edge);
+  }
+}
+
+const sortedSwForRelease = [...starwarsContent].sort(compareReleaseDates);
+
+export const starwarsWatchOrders: WatchOrder[] = sortedSwForRelease.map((item, index) =>
   buildWatchOrder({
     id: `sw-rel-${index + 1}`,
     franchise_id: 'star-wars',
@@ -409,7 +502,7 @@ export const starwarsWatchOrders: WatchOrder[] = starwarsContent.map((item, inde
     position: index + 1,
   })
 ).concat(
-  starwarsContent.map((item, index) =>
+  sortedSwForRelease.map((item, index) =>
     buildWatchOrder({
       id: `sw-chr-${index + 1}`,
       franchise_id: 'star-wars',

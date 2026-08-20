@@ -20,8 +20,10 @@ import {
   type CKGEdgeStrength,
 } from '@/data/cineOrderKnowledgeGraph';
 import type { KnowledgeGraphTraversalResult } from '@/lib/storyKnowledgeGraphEngine';
-import type { CategoryType } from '@/types/preparation';
+import type { CategoryType, PreparationRecommendation } from '@/types/preparation';
 import { getFranchiseBadgeLabel } from '@/components/ui/PreparationGuide';
+import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 interface StoryGraphNodeHierarchyProps {
   graphResult: KnowledgeGraphTraversalResult;
@@ -85,6 +87,11 @@ function formatEdgeStrength(strength?: CKGEdgeStrength): { label: string; style:
   }
 }
 
+import {
+  deduplicateRecommendationList,
+  buildItemIdentityKeySet,
+} from '@/lib/officialPreparationOverrideService';
+
 export function StoryGraphNodeHierarchy({
   graphResult,
   onToggleWatched,
@@ -95,79 +102,166 @@ export function StoryGraphNodeHierarchy({
   const targetTitle = graphResult.targetContent.title;
   const targetId = graphResult.targetContent.id;
 
-  const allRecs = [
-    ...graphResult.mustWatch,
-    ...graphResult.recommended,
-    ...graphResult.optional,
-    ...(graphResult.postCreditContext || []),
-  ];
+  const rawRecs =
+    (graphResult as any).mode === 'OFFICIAL_OVERRIDE' && (graphResult as any).officialPreparationItems
+      ? [
+          ...((graphResult as any).officialPreparationItems || []),
+          ...((graphResult as any).cineOrderExtraContent || []),
+        ]
+      : [
+          ...graphResult.mustWatch,
+          ...graphResult.recommended,
+          ...graphResult.optional,
+          ...(graphResult.postCreditContext || []),
+        ];
+
+  // Canonical deduplicated preparation collection across all chapters
+  const allRecs = deduplicateRecommendationList(rawRecs);
 
   // Group recs into distinct narrative journey chapters (Editorial Experience Framework v2.0)
-  const branches = [
+  const isDirectStory = (r: PreparationRecommendation) => {
+    const edge = findCkgEdge(r.content.id, targetId);
+    const rel = edge?.relationship;
+    return (
+      rel === 'direct-sequel' ||
+      rel === 'story-continuation' ||
+      rel === 'major-crossover' ||
+      r.dependencyType === 'Story'
+    );
+  };
+
+  const isCharacterJourney = (r: PreparationRecommendation) => {
+    const edge = findCkgEdge(r.content.id, targetId);
+    const rel = edge?.relationship;
+    return (
+      rel === 'character-origin' ||
+      rel === 'character-development' ||
+      rel === 'mentor' ||
+      r.dependencyType === 'Character'
+    );
+  };
+
+  const isTeamAssembly = (r: PreparationRecommendation) => {
+    const edge = findCkgEdge(r.content.id, targetId);
+    const rel = edge?.relationship;
+    return (
+      rel === 'shared-character' ||
+      rel === 'shared-villain' ||
+      rel === 'villain-origin' ||
+      rel === 'organization' ||
+      r.dependencyType === 'Team' ||
+      r.dependencyType === 'Villain'
+    );
+  };
+
+  const isWorldEvent = (r: PreparationRecommendation) => {
+    const edge = findCkgEdge(r.content.id, targetId);
+    const rel = edge?.relationship;
+    return (
+      rel === 'multiverse' ||
+      rel === 'timeline' ||
+      rel === 'shared-event' ||
+      rel === 'shared-object' ||
+      rel === 'world-building' ||
+      r.dependencyType === 'Multiverse' ||
+      r.dependencyType === 'World Building'
+    );
+  };
+
+  const isLegacyLore = (r: PreparationRecommendation) => {
+    const edge = findCkgEdge(r.content.id, targetId);
+    const rel = edge?.relationship;
+    return (
+      rel === 'thematic-callback' ||
+      rel === 'post-credit' ||
+      rel === 'same-universe-only' ||
+      r.dependencyType === 'Timeline' ||
+      r.dependencyType === 'Post-credit'
+    );
+  };
+
+  // Classify each recommendation into its best matching chapter without duplicates across chapters
+  const claimedKeys = new Set<string>();
+
+  const branchDefinitions = [
     {
       id: 'direct-story',
       title: 'Chapter 1 — Direct Story Continuation & Sequels',
       icon: <GitCommit className="w-4 h-4 text-cyan-400" />,
-      items: allRecs.filter(
-        (r) => r.dependencyType === 'Story'
-      ),
+      matcher: isDirectStory,
     },
     {
       id: 'character-journeys',
       title: 'Chapter 2 — Character Arcs & Protagonist Journeys',
       icon: <Users className="w-4 h-4 text-purple-400" />,
-      items: allRecs.filter(
-        (r) => r.dependencyType === 'Character'
-      ),
+      matcher: isCharacterJourney,
     },
     {
       id: 'team-assemblies',
       title: 'Chapter 3 — Team Assemblies & Hero Dynamics',
       icon: <Film className="w-4 h-4 text-amber-400" />,
-      items: allRecs.filter(
-        (r) => r.dependencyType === 'Team' || r.dependencyType === 'Villain'
-      ),
+      matcher: isTeamAssembly,
     },
     {
       id: 'world-events',
       title: 'Chapter 4 — World Events & Multiverse Mechanics',
       icon: <Layers className="w-4 h-4 text-rose-400" />,
-      items: allRecs.filter(
-        (r) => r.dependencyType === 'Multiverse' || r.dependencyType === 'World Building'
-      ),
+      matcher: isWorldEvent,
     },
     {
       id: 'legacy-lore',
       title: 'Chapter 5 — Legacy Stories & Shared Lore',
       icon: <Zap className="w-4 h-4 text-blue-400" />,
-      items: allRecs.filter(
-        (r) => r.dependencyType === 'Timeline' || r.dependencyType === 'Post-credit'
-      ),
+      matcher: isLegacyLore,
     },
-  ].filter((b) => b.items.length > 0);
+  ];
 
-  // Fallback chapter for unassigned narrative items
-  const categorizedIds = new Set(branches.flatMap((b) => b.items.map((i) => i.content.id)));
-  const unassigned = allRecs.filter((r) => !categorizedIds.has(r.content.id));
+  const branches = branchDefinitions.map((def) => {
+    const items = allRecs.filter((r) => {
+      const keys = buildItemIdentityKeySet(r);
+      for (const k of keys) {
+        if (claimedKeys.has(k)) return false;
+      }
+
+      if (def.matcher(r)) {
+        for (const k of keys) {
+          claimedKeys.add(k);
+        }
+        return true;
+      }
+      return false;
+    });
+    return {
+      id: def.id,
+      title: def.title,
+      icon: def.icon,
+      items: deduplicateRecommendationList(items),
+    };
+  }).filter((b) => b.items.length > 0);
+
+  // Fallback chapter for any remaining unassigned narrative items
+  const unassigned = allRecs.filter((r) => {
+    const keys = buildItemIdentityKeySet(r);
+    for (const k of keys) {
+      if (claimedKeys.has(k)) return false;
+    }
+    for (const k of keys) {
+      claimedKeys.add(k);
+    }
+    return true;
+  });
   if (unassigned.length > 0) {
     branches.push({
       id: 'general',
       title: 'Chapter 6 — General Narrative Enrichment',
       icon: <GitCommit className="w-4 h-4 text-emerald-400" />,
-      items: unassigned,
+      items: deduplicateRecommendationList(unassigned),
     });
   }
 
   // Sort items within each chapter chronologically ascending by release date (earliest release first)
   branches.forEach((b) => {
-    b.items.sort((x, y) => {
-      const dateX = x.content.release_date || '';
-      const dateY = y.content.release_date || '';
-      if (dateX !== dateY) {
-        return dateX.localeCompare(dateY);
-      }
-      return 0;
-    });
+    b.items.sort((x, y) => compareReleaseDates(x.content, y.content));
   });
 
   const getPriorityBadge = (category: CategoryType) => {
@@ -301,18 +395,30 @@ export function StoryGraphNodeHierarchy({
                                 </span>
                               </div>
 
-                              <Button
-                                variant={node.isWatched ? 'secondary' : 'outline'}
-                                size="sm"
-                                onClick={() => onToggleWatched(c.id)}
-                                className={cn(
-                                  'text-xs py-1 px-2.5 gap-1',
-                                  node.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                )}
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                {node.isWatched ? 'Watched' : 'Mark Watched'}
-                              </Button>
+                              {isTheatricallyUpcoming(c) ? (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled
+                                  className="text-xs py-1 px-2.5 opacity-60 cursor-not-allowed border border-white/10"
+                                  title="This title has not premiered yet and cannot be marked as watched."
+                                >
+                                  Not Yet Released
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant={node.isWatched ? 'secondary' : 'outline'}
+                                  size="sm"
+                                  onClick={() => onToggleWatched(c.id)}
+                                  className={cn(
+                                    'text-xs py-1 px-2.5 gap-1',
+                                    node.isWatched && 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                  )}
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  {node.isWatched ? 'Watched' : 'Mark Watched'}
+                                </Button>
+                              )}
                             </div>
 
                             <p className="text-xs text-muted-light leading-relaxed">

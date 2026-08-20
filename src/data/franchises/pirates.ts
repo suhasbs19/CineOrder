@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const piratesFranchise: Franchise = {
   id: 'pirates-of-the-caribbean',
@@ -101,13 +102,17 @@ export const piratesContent: Content[] = [
   }),
 ];
 
-export const piratesWatchOrders: WatchOrder[] = [
-  // Release & Chronological Order (identical)
-  buildWatchOrder({ id: 'potc-rel-1', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'potc-rel-2', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'potc-rel-3', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'potc-rel-4', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-4', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'potc-rel-5', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-5', order_type: 'release', position: 5 }),
+const sortedPiratesForRelease = [...piratesContent].sort(compareReleaseDates);
+
+export const piratesWatchOrders: WatchOrder[] = sortedPiratesForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `potc-rel-${index + 1}`,
+    franchise_id: 'pirates-of-the-caribbean',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   buildWatchOrder({ id: 'potc-chr-1', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-1', order_type: 'chronological', position: 1 }),
   buildWatchOrder({ id: 'potc-chr-2', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-2', order_type: 'chronological', position: 2 }),
@@ -121,7 +126,7 @@ export const piratesWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'potc-rec-3', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-3', order_type: 'recommended', position: 3 }),
   buildWatchOrder({ id: 'potc-rec-4', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-4', order_type: 'recommended', position: 4 }),
   buildWatchOrder({ id: 'potc-rec-5', franchise_id: 'pirates-of-the-caribbean', content_id: 'potc-5', order_type: 'recommended', position: 5 }),
-];
+]);
 
 export const franchise = piratesFranchise;
 export const content = piratesContent;

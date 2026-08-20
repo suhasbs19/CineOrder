@@ -1,6 +1,10 @@
 import type { Franchise, Content, WatchOrder, OrderType } from '@/types';
 import { allFranchises, allContent, allWatchOrders } from './franchises/index';
 import { getFranchiseArtwork } from './franchiseArtwork';
+import {
+  sortContentByReleaseDate,
+  sortWatchOrdersByReleaseDate,
+} from '@/lib/releaseOrdering';
 
 export const franchises: Franchise[] = allFranchises.map((f) => {
   const art = getFranchiseArtwork(f.id);
@@ -19,6 +23,10 @@ export const franchises: Franchise[] = allFranchises.map((f) => {
 export function getFranchiseContent(franchiseId: string): Content[] {
   const list = allContent.filter((c) => c.franchise_id === franchiseId);
   return Array.from(new Map(list.map((item) => [item.id, item])).values());
+}
+
+export function getSortedFranchiseContent(franchiseId: string): Content[] {
+  return sortContentByReleaseDate(getFranchiseContent(franchiseId));
 }
 
 export function getWatchOrders(franchiseId: string, contentOverrides?: Content[]): WatchOrder[] {
@@ -54,7 +62,7 @@ export function getWatchOrders(franchiseId: string, contentOverrides?: Content[]
 
     const missingContent = franchiseContent.filter((c) => !existingContentIds.has(c.id));
     if (missingContent.length > 0) {
-      const sortedMissing = [...missingContent].sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''));
+      const sortedMissing = sortContentByReleaseDate(missingContent);
       const existingMaxPos = Math.max(
         0,
         ...Array.from(uniqueMap.values())
@@ -77,7 +85,14 @@ export function getWatchOrders(franchiseId: string, contentOverrides?: Content[]
     }
   }
 
-  return Array.from(uniqueMap.values());
+  // Normalize and strictly enforce canonical release-date order for 'release' watch orders
+  const allOrders = Array.from(uniqueMap.values());
+  const releaseOrders = allOrders.filter((w) => w.order_type === 'release');
+  const sortedReleaseOrders = sortWatchOrdersByReleaseDate(releaseOrders, franchiseContent);
+
+  const nonReleaseOrders = allOrders.filter((w) => w.order_type !== 'release');
+
+  return [...sortedReleaseOrders, ...nonReleaseOrders];
 }
 
 export function getContentById(contentId: string): Content | undefined {

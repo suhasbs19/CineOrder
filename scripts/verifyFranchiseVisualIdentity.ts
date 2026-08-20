@@ -211,6 +211,15 @@ export const CANONICAL_FRANCHISE_IDENTITIES: Record<string, CanonicalFranchiseId
     canonicalLogoPath: '/logos/alien.svg',
     knownForbiddenPosterHashes: ['nnFgBA6nR0pHorxdFaDvdY4nVHL.jpg', '3C5brXxnBxfkeKWwA1Fh4xvy4wr.jpg'],
   },
+  'spider-man': {
+    id: 'spider-man',
+    name: 'Spider-Man',
+    tmdbCollectionId: null, // Saga across Raimi, Webb, and Spider-Verse
+    canonicalPosterHash: 'gh4c2ubi14WogAhvCDvceFkexIF.jpg',
+    canonicalBannerHash: 'sWvxBXviRvmOpNq6rLShyW25b42.jpg',
+    canonicalLogoPath: '/logos/spider-man.svg',
+    knownForbiddenPosterHashes: ['nnFgBA6nR0pHorxdFaDvdY4nVHL.jpg'],
+  },
 };
 
 export interface VisualIdentityValidationResult {

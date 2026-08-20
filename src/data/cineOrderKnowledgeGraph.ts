@@ -1006,6 +1006,22 @@ export const titleNodes: Record<string, TitleNode> = {
     spoilerFreeContext: 'Peter Parker balances college life and crime-fighting while confronting new threats in New York City.',
     reviewStatus: 'upcoming',
   },
+  'mcu-visionquest': {
+    id: 'mcu-visionquest',
+    title: 'VisionQuest',
+    type: 'tv-series',
+    releaseDate: '2026-10-14',
+    universe: 'MCU',
+    saga: 'Multiverse Saga',
+    phase: 6,
+    characters: ['White Vision (Paul Bettany)', 'Ultron (James Spader)'],
+    villains: ['Ultron'],
+    organizations: ['S.W.O.R.D.'],
+    objects: ['Synthezoid Body', 'Mind Stone Resonance'],
+    storyArcs: ['White Vision Memory Recovery', 'Existential Quest'],
+    spoilerFreeContext: 'Paul Bettany returns as White Vision exploring his newfound memories and existential identity after Westview.',
+    reviewStatus: 'upcoming',
+  },
   'mcu-secret-wars': {
     id: 'mcu-secret-wars',
     title: 'Avengers: Secret Wars',
@@ -7419,7 +7435,25 @@ export const storyEdges: StoryEdge[] = [
       ],
       source: 'editorial',
     },
-  }
+  },
+  {
+    sourceId: 'mcu-wandavision',
+    targetId: 'mcu-visionquest',
+    relationship: 'direct-sequel',
+    strength: 'required',
+    confidence: 'confirmed',
+    reason: 'White Vision was rebuilt by S.W.O.R.D. and restored his synthezoid memories during the Battle of Westview in WandaVision.',
+    sourceType: 'official-synopsis',
+    editorialImportance: 'primary',
+    recommendationEvidence: {
+      shortReason: 'WandaVision introduces White Vision and establishes his memory recovery that initiates VisionQuest.',
+      detailedReasons: [
+        'Explains the creation and awakening of White Vision by S.W.O.R.D. in Westview.',
+        'Essential for understanding Vision quest for identity and existential memories.',
+      ],
+      source: 'editorial',
+    },
+  },
 ];
 
 export const cineOrderKnowledgeGraph: CineOrderKnowledgeGraphData = {

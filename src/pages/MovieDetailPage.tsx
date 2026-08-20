@@ -12,6 +12,9 @@ import { getContentById, getWatchOrders, franchises } from '@/data/franchises';
 import { useTMDbContent } from '@/hooks/useTMDbContent';
 import { formatRuntime, formatYear, formatDate } from '@/lib/utils';
 import { getLifecycleCategory } from '@/lib/metadataRefresh';
+import { sortWatchOrdersByReleaseDate } from '@/lib/releaseOrdering';
+import { isTheatricallyUpcoming } from '@/lib/upcomingUtils';
+import { useWatchStore } from '@/store/watchStore';
 
 import { SafeImage } from '@/components/ui/SafeImage';
 import { PreparationGuide } from '@/components/ui/PreparationGuide';
@@ -22,6 +25,9 @@ export default function MovieDetailPage() {
   const staticContent = getContentById(id || '');
   const { content: franchiseItems, watchOrders: remoteWatchOrders } = useTMDbContent(staticContent?.franchise_id || '');
   const content = franchiseItems.find((c) => c.id === staticContent?.id || c.id === id) || staticContent;
+
+  const { isWatched, toggleWatched } = useWatchStore();
+  const isUpcomingTitle = staticContent ? isTheatricallyUpcoming(staticContent) : (content ? isTheatricallyUpcoming(content) : false);
 
   // Canonical lifecycle label derived from the STATIC catalog entry.
   // This is the same data source used by PreparationGuide (via executeKnowledgeGraphTraversal → allContent).
@@ -55,9 +61,10 @@ export default function MovieDetailPage() {
 
   const franchise = franchises.find((f) => f.id === content.franchise_id);
   const watchOrders = remoteWatchOrders.length > 0 ? remoteWatchOrders : getWatchOrders(content.franchise_id);
-  const releaseOrders = watchOrders
-    .filter((o) => o.order_type === 'release')
-    .sort((a, b) => a.position - b.position);
+  const releaseOrders = sortWatchOrdersByReleaseDate(
+    watchOrders.filter((o) => o.order_type === 'release'),
+    franchiseItems
+  );
 
   const currentIndex = releaseOrders.findIndex((o) => o.content_id === content.id);
   const prevItem = currentIndex > 0 ? releaseOrders[currentIndex - 1]?.content : null;
@@ -162,9 +169,25 @@ export default function MovieDetailPage() {
                     Watch Trailer
                   </Button>
                 )}
-                <Button variant="secondary" leftIcon={<Eye className="w-4 h-4" />}>
-                  Mark Watched
-                </Button>
+                {isUpcomingTitle ? (
+                  <Button
+                    variant="secondary"
+                    disabled
+                    className="opacity-60 cursor-not-allowed border border-white/10"
+                    title="This title has not premiered yet and cannot be marked as watched."
+                  >
+                    Not Yet Released
+                  </Button>
+                ) : (
+                  <Button
+                    variant={isWatched(content.id) ? 'secondary' : 'outline'}
+                    leftIcon={<Eye className="w-4 h-4" />}
+                    onClick={() => toggleWatched('guest', content.id)}
+                    className={isWatched(content.id) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : ''}
+                  >
+                    {isWatched(content.id) ? 'Watched' : 'Mark Watched'}
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon">
                   <Heart className="w-5 h-5" />
                 </Button>

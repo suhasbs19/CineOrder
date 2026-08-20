@@ -13,13 +13,13 @@ const FranchisePage = lazy(() => import('@/pages/FranchisePage'));
 const MovieDetailPage = lazy(() => import('@/pages/MovieDetailPage'));
 const SearchPage = lazy(() => import('@/pages/SearchPage'));
 const UpcomingPage = lazy(() => import('@/pages/UpcomingPage'));
-const AssistantPage = lazy(() => import('@/pages/AssistantPage'));
 const PlannerPage = lazy(() => import('@/pages/PlannerPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const SignupPage = lazy(() => import('@/pages/SignupPage'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage'));
+const UserSearchPage = lazy(() => import('@/pages/UserSearchPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
 const DevDiagnosticsPage = lazy(() => import('@/pages/DevDiagnosticsPage'));
 const CkgProposalReviewPage = lazy(() => import('@/pages/CkgProposalReviewPage'));
@@ -61,14 +61,16 @@ export default function App() {
               <Route path="/franchise/:slug" element={<PageTransition><FranchisePage /></PageTransition>} />
               <Route path="/movie/:id" element={<PageTransition><MovieDetailPage /></PageTransition>} />
               <Route path="/search" element={<PageTransition><SearchPage /></PageTransition>} />
+              <Route path="/users" element={<PageTransition><UserSearchPage /></PageTransition>} />
+              <Route path="/search/users" element={<PageTransition><UserSearchPage /></PageTransition>} />
               <Route path="/upcoming" element={<PageTransition><UpcomingPage /></PageTransition>} />
-              <Route path="/assistant" element={<PageTransition><AssistantPage /></PageTransition>} />
               <Route path="/planner" element={<PageTransition><PlannerPage /></PageTransition>} />
               <Route path="/dashboard" element={<PageTransition><PlannerPage /></PageTransition>} />
               <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
               <Route path="/signup" element={<PageTransition><SignupPage /></PageTransition>} />
               <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
               <Route path="/profile" element={<PageTransition><ProfilePage /></PageTransition>} />
+              <Route path="/profile/:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
               <Route path="/@:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
               <Route path="/u/:username" element={<PageTransition><PublicProfilePage /></PageTransition>} />
               <Route path="/admin" element={<PageTransition><AdminPage /></PageTransition>} />

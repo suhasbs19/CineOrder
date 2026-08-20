@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -16,6 +16,7 @@ import {
   CornerDownLeft,
   SlidersHorizontal,
   Command,
+  Users,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { SafeImage } from '@/components/ui/SafeImage';
@@ -23,6 +24,7 @@ import { SearchResultCard } from '@/components/ui/SearchResultCard';
 import { SearchSkeleton } from '@/components/ui/SearchSkeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { searchFranchises, franchises, searchAllContent, allContent, getContentById } from '@/data/franchises';
+import { sortContentByReleaseDate, compareReleaseDates } from '@/lib/releaseOrdering';
 import { tmdb, tmdbImage, isTMDbConfigured } from '@/lib/tmdb';
 import type { TMDbSearchResult } from '@/lib/tmdb';
 import type { Franchise } from '@/types';
@@ -190,39 +192,39 @@ export default function SearchPage() {
     const activeCategory = urlCat || userSelectedTab || category || 'all';
 
     if (!normalizedDebouncedQuery.trim()) {
-      const defaultMovies = allContent
-        .filter((c) => c.type === 'movie' || c.type === 'animated')
-        .map((c) => ({
-          id: c.id,
-          canonical_id: c.id,
-          tmdb_id: c.tmdb_id,
-          title: c.title,
-          name: c.title,
-          poster_path: c.poster_url,
-          backdrop_path: c.backdrop_url,
-          overview: c.overview,
-          release_date: c.release_date,
-          first_air_date: c.release_date,
-          vote_average: c.rating,
-          media_type: 'movie' as const,
-        }));
+      const defaultMovies = sortContentByReleaseDate(
+        allContent.filter((c) => c.type === 'movie' || c.type === 'animated')
+      ).map((c) => ({
+        id: c.id,
+        canonical_id: c.id,
+        tmdb_id: c.tmdb_id,
+        title: c.title,
+        name: c.title,
+        poster_path: c.poster_url,
+        backdrop_path: c.backdrop_url,
+        overview: c.overview,
+        release_date: c.release_date,
+        first_air_date: c.release_date,
+        vote_average: c.rating,
+        media_type: 'movie' as const,
+      }));
 
-      const defaultTV = allContent
-        .filter((c) => c.type === 'series')
-        .map((c) => ({
-          id: c.id,
-          canonical_id: c.id,
-          tmdb_id: c.tmdb_id,
-          title: c.title,
-          name: c.title,
-          poster_path: c.poster_url,
-          backdrop_path: c.backdrop_url,
-          overview: c.overview,
-          release_date: c.release_date,
-          first_air_date: c.release_date,
-          vote_average: c.rating,
-          media_type: 'tv' as const,
-        }));
+      const defaultTV = sortContentByReleaseDate(
+        allContent.filter((c) => c.type === 'series')
+      ).map((c) => ({
+        id: c.id,
+        canonical_id: c.id,
+        tmdb_id: c.tmdb_id,
+        title: c.title,
+        name: c.title,
+        poster_path: c.poster_url,
+        backdrop_path: c.backdrop_url,
+        overview: c.overview,
+        release_date: c.release_date,
+        first_air_date: c.release_date,
+        vote_average: c.rating,
+        media_type: 'tv' as const,
+      }));
 
       setSearchResults({
         franchises: franchises,
@@ -592,7 +594,7 @@ export default function SearchPage() {
 
       const now = new Date().toISOString().slice(0, 10);
 
-      return list.filter((item) => {
+      const filtered = list.filter((item) => {
         const date = item.release_date || item.first_air_date || '';
         const titleText = (item.title || item.name || '').toLowerCase();
         const overviewText = (item.overview || '').toLowerCase();
@@ -609,6 +611,15 @@ export default function SearchPage() {
           );
         return true;
       });
+
+      if (contentFilter === 'upcoming') {
+        return [...filtered].sort(compareReleaseDates);
+      }
+      if (contentFilter === 'released') {
+        return [...filtered].sort((a, b) => compareReleaseDates(b, a));
+      }
+
+      return filtered;
     },
     [contentFilter]
   );
@@ -634,12 +645,22 @@ export default function SearchPage() {
       <div className="min-h-screen pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h1 className="text-3xl sm:text-4xl font-bold">
                 {query ? 'Search Results' : 'Explore'}
               </h1>
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-muted">
-                <Command className="w-3.5 h-3.5" /> + K or <span className="text-white font-bold px-1 bg-white/10 rounded">/</span> to focus
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/users"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-medium text-muted hover:text-white transition-colors border border-white/10"
+                >
+                  <Users className="w-3.5 h-3.5 text-primary" />
+                  <span>Search Users</span>
+                  <ArrowRight className="w-3 h-3 text-muted" />
+                </Link>
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-muted">
+                  <Command className="w-3.5 h-3.5" /> + K or <span className="text-white font-bold px-1 bg-white/10 rounded">/</span> to focus
+                </div>
               </div>
             </div>
 

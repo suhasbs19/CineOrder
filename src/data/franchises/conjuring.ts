@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const conjuringFranchise: Franchise = {
   id: 'the-conjuring-universe',
@@ -174,7 +175,9 @@ export const conjuringContent: Content[] = [
   }),
 ];
 
-export const conjuringWatchOrders: WatchOrder[] = conjuringContent.map((item, index) =>
+const sortedConjuringForRelease = [...conjuringContent].sort(compareReleaseDates);
+
+export const conjuringWatchOrders: WatchOrder[] = sortedConjuringForRelease.map((item, index) =>
   buildWatchOrder({
     id: `conj-rel-${index + 1}`,
     franchise_id: 'the-conjuring-universe',

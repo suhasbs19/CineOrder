@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const fastAndFuriousFranchise: Franchise = {
   id: 'fast-and-furious',
@@ -204,7 +205,9 @@ export const fastAndFuriousContent: Content[] = [
   }),
 ];
 
-export const fastAndFuriousWatchOrders: WatchOrder[] = fastAndFuriousContent.map((item, index) =>
+const sortedFfForRelease = [...fastAndFuriousContent].sort(compareReleaseDates);
+
+export const fastAndFuriousWatchOrders: WatchOrder[] = sortedFfForRelease.map((item, index) =>
   buildWatchOrder({
     id: `ff-rel-${index + 1}`,
     franchise_id: 'fast-and-furious',

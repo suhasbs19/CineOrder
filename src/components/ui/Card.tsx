@@ -37,24 +37,19 @@ interface CardImageProps {
 }
 
 export function CardImage({ src, alt, className, aspectRatio = 'poster', fallbackSrc }: CardImageProps) {
-  const aspectStyles = {
-    poster: 'aspect-[2/3]',
-    backdrop: 'aspect-video',
-    square: 'aspect-square',
-  };
-
   const defaultFallback = aspectRatio === 'backdrop' ? '/placeholder-backdrop.svg' : '/placeholder-poster.svg';
 
   return (
-    <div className={cn('relative overflow-hidden', aspectStyles[aspectRatio], className)}>
+    <div className={cn('relative overflow-hidden', className)}>
       <SafeImage
         src={src}
         alt={alt}
         fallbackSrc={fallbackSrc || defaultFallback}
-        loading="lazy"
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        aspectRatio={aspectRatio}
+        imgClassName="transition-transform duration-500 group-hover:scale-105"
+        className="w-full h-full"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
     </div>
   );
 }

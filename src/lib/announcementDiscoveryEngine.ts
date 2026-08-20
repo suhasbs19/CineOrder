@@ -12,6 +12,7 @@ import type {
 } from '../types/announcementDiscovery';
 import { getLifecycleCategory, computeOttAvailable } from './metadataRefresh';
 import { normalizeDateStr } from './dateUtils';
+import { compareReleaseDates } from './releaseOrdering';
 
 // ============================================================================
 // 1. CANONICAL FRANCHISE PREFIX REGISTRY
@@ -20,6 +21,7 @@ export const FRANCHISE_ID_PREFIXES: Record<string, string> = {
   'marvel-cinematic-universe': 'mcu-',
   'star-wars': 'sw-',
   'harry-potter': 'hp-',
+  'dc-extended-universe': 'dc-',
   'dc-universe': 'dc-',
   'the-conjuring-universe': 'conj-',
   'fast-and-furious': 'ff-',
@@ -29,6 +31,7 @@ export const FRANCHISE_ID_PREFIXES: Record<string, string> = {
   'jurassic-park': 'jp-',
   'pirates-of-the-caribbean': 'potc-',
   'transformers': 'tf-',
+  'lord-of-the-rings': 'lotr-',
   'the-lord-of-the-rings': 'lotr-',
   'the-hobbit': 'hobbit-',
   'evil-dead': 'ed-',
@@ -349,31 +352,37 @@ export function checkForDuplicates(
   };
 }
 
+import {
+  resolveArtworkForAnnouncementSync,
+  type ArtworkResolutionResult,
+} from './artworkResolverEngine';
+
 // ============================================================================
-// 6. ARTWORK VERIFICATION ENGINE
+// 6. ARTWORK VERIFICATION ENGINE (Synchronous & Universal)
 // ============================================================================
 export function verifyArtworkUrls(
   posterUrl?: string,
   backdropUrl?: string
-): { poster: string; backdrop: string; verified: boolean } {
-  let verified = true;
-  let finalPoster = posterUrl?.trim() || '';
-  let finalBackdrop = backdropUrl?.trim() || '';
-
-  if (!finalPoster || (!finalPoster.startsWith('http') && !finalPoster.startsWith('/'))) {
-    finalPoster = '/placeholder-poster.svg';
-    verified = false;
-  }
-
-  if (!finalBackdrop || (!finalBackdrop.startsWith('http') && !finalBackdrop.startsWith('/'))) {
-    finalBackdrop = '/placeholder-backdrop.svg';
-    verified = false;
-  }
+): {
+  poster: string;
+  backdrop: string;
+  verified: boolean;
+  status?: string;
+  reason?: string;
+  resolution?: ArtworkResolutionResult;
+} {
+  const resolution = resolveArtworkForAnnouncementSync({
+    posterUrl,
+    backdropUrl,
+  });
 
   return {
-    poster: finalPoster,
-    backdrop: finalBackdrop,
-    verified,
+    poster: resolution.posterUrl,
+    backdrop: resolution.backdropUrl,
+    verified: resolution.status === 'VERIFIED',
+    status: resolution.status,
+    reason: resolution.reason,
+    resolution,
   };
 }
 
@@ -391,11 +400,7 @@ export function generateStoryRelationshipCandidates(
   if (franchiseItems.length === 0) return proposedEdges;
 
   // Find most recent released or upcoming titles in the same franchise to propose narrative linkages
-  const sortedFranchise = [...franchiseItems].sort((a, b) => {
-    const dateA = a.release_date || '1970-01-01';
-    const dateB = b.release_date || '1970-01-01';
-    return dateB.localeCompare(dateA);
-  });
+  const sortedFranchise = [...franchiseItems].sort((a, b) => compareReleaseDates(b, a));
 
   const anchorItem = sortedFranchise[0];
   if (!anchorItem) return proposedEdges;
@@ -542,6 +547,7 @@ export function generateMetadataCandidate(
     director: announcement.director,
     posterUrl: artwork.poster,
     backdropUrl: artwork.backdrop,
+    artworkVerification: artwork.resolution,
     isCanon: true,
     isRequired: true,
     lifecycleCategory,
@@ -583,6 +589,7 @@ export function createAnnouncementProposal(
     status: 'pending',
     overallQualityScore: Math.min(100, score),
     sourceVerification: candidate.sourceVerification,
+    artworkVerification: candidate.artworkVerification,
     createdAt: new Date().toISOString(),
   };
 

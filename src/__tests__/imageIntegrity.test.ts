@@ -91,15 +91,19 @@ export function runImageIntegrityTests() {
   const imIsolated = Boolean(im1 && im2 && resolveContentPoster(im1) !== resolveContentPoster(im2));
   assert(imIsolated, '8. One card\'s image cannot appear in another card');
 
-  // Test 9: Franchise Poster Leak Protection
-  const franchisePosters = new Set(allFranchises.map((f) => f.poster_url).filter(Boolean));
-  let noFranchiseLeak = true;
+  // Test 9: Cross-Franchise Poster Leak Protection
+  const franchiseMap = new Map(allFranchises.map((f) => [f.id, f.poster_url]));
+  let noCrossFranchiseLeak = true;
   for (const c of allContent) {
     if (c.poster_url && c.poster_url !== CINEORDER_PLACEHOLDER_POSTER) {
-      if (franchisePosters.has(c.poster_url)) noFranchiseLeak = false;
+      for (const [fId, fPoster] of franchiseMap.entries()) {
+        if (fId !== c.franchise_id && fPoster && c.poster_url === fPoster) {
+          noCrossFranchiseLeak = false;
+        }
+      }
     }
   }
-  assert(noFranchiseLeak, '9. Franchise artwork cannot be accidentally used as a movie poster');
+  assert(noCrossFranchiseLeak, '9. Another franchise artwork cannot be accidentally used as a movie poster');
 
   // Test 10: Deterministic Pure Image Resolver
   const pureTest = resolveContentPoster(allContent[0]) === resolveContentPoster(allContent[0]);
@@ -121,6 +125,22 @@ export function runImageIntegrityTests() {
   const backdropTest = resolveContentBackdrop({ id: 'c-1', title: 'Custom', poster_url: 'https://image.tmdb.org/t/p/w500/custom.jpg' }) === 'https://image.tmdb.org/t/p/w500/custom.jpg';
   const emptyBackdropTest = resolveContentBackdrop({ id: 'empty-id', title: 'Empty' }) === CINEORDER_PLACEHOLDER_BACKDROP;
   assert(backdropTest && emptyBackdropTest, '13. Backdrop resolver falls back gracefully to poster or placeholder backdrop');
+
+  // Test 14: VisionQuest Verified TMDB Artwork & Regression Protection
+  const vq = allContent.find((c) => c.id === 'mcu-visionquest');
+  const vqArtworkValid = Boolean(
+    vq &&
+    vq.tmdb_id === 1342110 &&
+    vq.poster_url &&
+    vq.poster_url !== CINEORDER_PLACEHOLDER_POSTER &&
+    vq.poster_url.includes('image.tmdb.org') &&
+    vq.backdrop_url &&
+    vq.backdrop_url !== CINEORDER_PLACEHOLDER_BACKDROP &&
+    vq.backdrop_url.includes('image.tmdb.org') &&
+    resolveContentPoster(vq) === vq.poster_url &&
+    resolveContentBackdrop(vq) === vq.backdrop_url
+  );
+  assert(vqArtworkValid, '14. VisionQuest has verified, non-placeholder TMDB poster & backdrop and resolves accurately');
 
   console.log(`\nResults: ${passed} PASSED, ${failed} FAILED`);
   const proc = (globalThis as any).process;

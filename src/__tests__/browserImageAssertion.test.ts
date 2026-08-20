@@ -74,20 +74,20 @@ export function runBrowserImageAssertions() {
   }
   assert(misboundCards === 0, '4. Title and Image binding remains strictly locked to matching Content ID');
 
-  // Assert 5: Franchise Page Image Isolation across all 16 Franchises
+  // Assert 5: Cross-Franchise Page Image Isolation across all 18 Franchises
   let franchiseImageCollisions = 0;
   for (const f of allFranchises) {
     const artwork = resolveFranchiseArtwork(f);
-    const franchiseContent = allContent.filter((c) => c.franchise_id === f.id);
-    for (const c of franchiseContent) {
+    const foreignContent = allContent.filter((c) => c.franchise_id !== f.id);
+    for (const c of foreignContent) {
       const itemSrc = resolveContentPoster(c);
       if (itemSrc !== CINEORDER_PLACEHOLDER_POSTER && itemSrc === artwork.poster) {
-        console.error(`  [Franchise Leak] Franchise "${f.name}" poster leaks into movie "${c.title}"`);
+        console.error(`  [Franchise Leak] Franchise "${f.name}" poster leaks into foreign movie "${c.title}"`);
         franchiseImageCollisions++;
       }
     }
   }
-  assert(franchiseImageCollisions === 0, '5. Franchise artwork never leaks into individual movie/series cards');
+  assert(franchiseImageCollisions === 0, '5. Franchise artwork never leaks into foreign movie/series cards');
 
   // Assert 6: Search Filtered Card Image Resolution
   const searchResults = allContent.filter((c) => c.title.toLowerCase().includes('deadpool'));

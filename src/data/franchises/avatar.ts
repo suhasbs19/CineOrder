@@ -1,5 +1,6 @@
 import type { Franchise, Content, WatchOrder } from '@/types';
 import { buildContent, buildWatchOrder } from './utils';
+import { compareReleaseDates } from '@/lib/releaseOrdering';
 
 export const avatarFranchise: Franchise = {
   id: 'avatar',
@@ -135,13 +136,17 @@ export const avatarContent: Content[] = [
   }),
 ];
 
-export const avatarWatchOrders: WatchOrder[] = [
-  // ─── RELEASE ORDER ──────────────────────────────────────────
-  buildWatchOrder({ id: 'wo-avatar-rel-1', franchise_id: 'avatar', content_id: 'avatar-1', order_type: 'release', position: 1 }),
-  buildWatchOrder({ id: 'wo-avatar-rel-2', franchise_id: 'avatar', content_id: 'avatar-2', order_type: 'release', position: 2 }),
-  buildWatchOrder({ id: 'wo-avatar-rel-3', franchise_id: 'avatar', content_id: 'avatar-3', order_type: 'release', position: 3 }),
-  buildWatchOrder({ id: 'wo-avatar-rel-4', franchise_id: 'avatar', content_id: 'avatar-4', order_type: 'release', position: 4 }),
-  buildWatchOrder({ id: 'wo-avatar-rel-5', franchise_id: 'avatar', content_id: 'avatar-5', order_type: 'release', position: 5 }),
+const sortedAvatarForRelease = [...avatarContent].sort(compareReleaseDates);
+
+export const avatarWatchOrders: WatchOrder[] = sortedAvatarForRelease.map((item, index) =>
+  buildWatchOrder({
+    id: `wo-avatar-rel-${index + 1}`,
+    franchise_id: 'avatar',
+    content_id: item.id,
+    order_type: 'release',
+    position: index + 1,
+  })
+).concat([
 
   // ─── CHRONOLOGICAL ORDER ────────────────────────────────────
   buildWatchOrder({ id: 'wo-avatar-chr-1', franchise_id: 'avatar', content_id: 'avatar-1', order_type: 'chronological', position: 1, notes: 'Jake Sully arrives on Pandora in 2154.' }),
@@ -156,7 +161,7 @@ export const avatarWatchOrders: WatchOrder[] = [
   buildWatchOrder({ id: 'wo-avatar-rec-3', franchise_id: 'avatar', content_id: 'avatar-3', order_type: 'recommended', position: 3 }),
   buildWatchOrder({ id: 'wo-avatar-rec-4', franchise_id: 'avatar', content_id: 'avatar-4', order_type: 'recommended', position: 4 }),
   buildWatchOrder({ id: 'wo-avatar-rec-5', franchise_id: 'avatar', content_id: 'avatar-5', order_type: 'recommended', position: 5 }),
-];
+]);
 
 export const franchise = avatarFranchise;
 export const content = avatarContent;
