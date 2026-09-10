@@ -1,4 +1,26 @@
-import { supabase } from '../src/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const getEnvVar = (key: string, defaultValue: string = ''): string => {
+  const globalProc = (globalThis as any).process;
+  if (globalProc && globalProc.env && globalProc.env[key]) {
+    return globalProc.env[key] as string;
+  }
+  return defaultValue;
+};
+
+const supabaseUrl = getEnvVar(
+  'VITE_SUPABASE_URL',
+  getEnvVar('SUPABASE_URL', 'https://iknxldrylfsuphaydamr.supabase.co')
+);
+const supabaseAnonKey = getEnvVar(
+  'VITE_SUPABASE_ANON_KEY',
+  getEnvVar(
+    'SUPABASE_ANON_KEY',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrbnhsZHJ5bGZzdXBoYXlkYW1yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNDY1NTAsImV4cCI6MjEwMDgyMjU1MH0.Dw-QBxAYHyOxF9PpWLBhQx_IqZ3T5biEfus0_40sEO4'
+  )
+);
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface HealthCheckResult {
   ok: boolean;
@@ -26,14 +48,7 @@ export async function checkSupabaseHealth(): Promise<HealthCheckResult> {
       return { ok: true, status: 200 };
     }
 
-    // 2. Fallback check: If the schema cache does not yet have public.franchises (PGRST205 / 404),
-    // verify that the Supabase instance is active and reachable via the service health endpoint.
     if (error && (error.code === 'PGRST205' || status === 404)) {
-      const globalProc = (globalThis as any).process;
-      const env = globalProc?.env || {};
-      const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || 'https://iknxldrylfsuphaydamr.supabase.co';
-      const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrbnhsZHJ5bGZzdXBoYXlkYW1yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNDY1NTAsImV4cCI6MjEwMDgyMjU1MH0.Dw-QBxAYHyOxF9PpWLBhQx_IqZ3T5biEfus0_40sEO4';
-
       const authHealthRes = await fetch(`${supabaseUrl}/auth/v1/health`, {
         headers: {
           apikey: supabaseAnonKey,
