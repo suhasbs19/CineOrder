@@ -62,6 +62,40 @@ async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number = 800):
 }
 
 /**
+ * Checks whether a registered CineOrder profile exists for a given user ID.
+ * Returns the Profile if found and valid (has non-empty username), or null otherwise.
+ */
+export async function checkProfileExists(userId: string): Promise<Profile | null> {
+  if (!userId) return null;
+
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle(),
+      800
+    );
+
+    if (!error && data && data.username && data.username.trim().length > 0) {
+      const prof = data as Profile;
+      saveLocalProfile(prof);
+      return prof;
+    }
+  } catch {
+    // Fall back to local registry
+  }
+
+  const local = getLocalProfile(userId);
+  if (local && local.username && local.username.trim().length > 0) {
+    return local;
+  }
+
+  return null;
+}
+
+/**
  * Checks if a normalized username is already taken.
  */
 export async function checkUsernameAvailability(username: string): Promise<boolean> {

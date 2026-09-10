@@ -106,8 +106,8 @@ export const insidiousContent: Content[] = [
     tmdb_id: null,
     title: 'Insidious: Out of the Further',
     type: 'movie',
-    poster_url: 'https://image.tmdb.org/t/p/w500/insidious6.jpg',
-    backdrop_url: 'https://image.tmdb.org/t/p/w1280/ins6_backdrop.jpg',
+    poster_url: '/placeholder-poster.svg',
+    backdrop_url: '/placeholder-backdrop.svg',
     overview:
       'The sixth installment in the Insidious franchise follows a young mother who discovers she can travel into The Further and inadvertently brings terrifying entities back into the real world.',
     release_date: '2026-08-21',

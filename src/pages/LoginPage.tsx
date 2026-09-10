@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     try {
-      await signInWithGoogle();
+      await signInWithGoogle('login');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Google login failed.');
     }

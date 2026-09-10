@@ -123,8 +123,8 @@ export const evilDeadContent: Content[] = [
     tmdb_id: null,
     title: 'Evil Dead Burn',
     type: 'movie',
-    poster_url: 'https://image.tmdb.org/t/p/w500/edburn.jpg',
-    backdrop_url: 'https://image.tmdb.org/t/p/w1280/edburn_backdrop.jpg',
+    poster_url: '/placeholder-poster.svg',
+    backdrop_url: '/placeholder-backdrop.svg',
     overview:
       'Serving as a sequel to Evil Dead Rise, the story follows a young woman seeking solace with her in-laws, only for the family gathering to turn into a nightmare as Deadite possession erupts.',
     release_date: '2026-07-10',

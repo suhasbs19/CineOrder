@@ -14,8 +14,9 @@ export function UsernameOnboardingModal() {
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Show only if authenticated and profile has no username
-  const shouldShow = initialized && !!user && (!profile || !profile.username);
+  // Show only if authenticated during an explicit signup flow and profile has no username
+  const isSignupIntent = typeof window !== 'undefined' && window.sessionStorage?.getItem('cineorder_auth_intent') === 'signup';
+  const shouldShow = initialized && !!user && (!profile || !profile.username) && isSignupIntent;
 
   // Debounced format & availability check
   useEffect(() => {

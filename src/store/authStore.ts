@@ -9,7 +9,7 @@ import {
   loginWithUsername,
   requestPasswordRecovery,
   createOrUpdateGoogleProfile,
-  getLocalProfile,
+  checkProfileExists,
   saveLocalProfile,
 } from '@/lib/authService';
 
@@ -60,12 +60,13 @@ interface AuthState {
   signInUsername: (username: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (intent?: 'login' | 'signup') => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
-  fetchProfile: (userId: string) => Promise<void>;
-  completeOnboarding: (username: string) => Promise<Profile>;
+  fetchProfile: (userId: string) => Promise<Profile | null>;
+  setSessionAndProfile: (user: User, session: Session | null, profile: Profile) => void;
+  completeOnboarding: (username: string, customUser?: User | null) => Promise<Profile>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -79,22 +80,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { data: { session } } = await withTimeout(supabase.auth.getSession(), 600);
       if (session?.user) {
-        set({ user: session.user, session });
-        saveActiveSessionLocally(session.user, session);
-        await get().fetchProfile(session.user.id);
+        const profile = await checkProfileExists(session.user.id);
+        if (profile && profile.username) {
+          set({ user: session.user, session, profile });
+          saveActiveSessionLocally(session.user, session);
+        } else {
+          // User authenticated with provider but has not completed CineOrder registration
+          set({ user: null, session: null, profile: null });
+          saveActiveSessionLocally(null, null);
+        }
       } else {
         const local = loadActiveSessionLocally();
         if (local?.user) {
-          set({ user: local.user, session: local.session });
-          await get().fetchProfile(local.user.id);
+          const profile = await checkProfileExists(local.user.id);
+          if (profile && profile.username) {
+            set({ user: local.user, session: local.session, profile });
+          } else {
+            set({ user: null, session: null, profile: null });
+            saveActiveSessionLocally(null, null);
+          }
         }
       }
     } catch (error) {
       console.warn('Auth initialization fallback:', error);
       const local = loadActiveSessionLocally();
       if (local?.user) {
-        set({ user: local.user, session: local.session });
-        await get().fetchProfile(local.user.id);
+        const profile = await checkProfileExists(local.user.id);
+        if (profile && profile.username) {
+          set({ user: local.user, session: local.session, profile });
+        } else {
+          set({ user: null, session: null, profile: null });
+          saveActiveSessionLocally(null, null);
+        }
       }
     } finally {
       set({ initialized: true });
@@ -108,15 +125,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (session?.user) {
-        set({ user: session.user, session });
-        saveActiveSessionLocally(session.user, session);
-        await get().fetchProfile(session.user.id);
+        const profile = await checkProfileExists(session.user.id);
+        if (profile && profile.username) {
+          set({ user: session.user, session, profile });
+          saveActiveSessionLocally(session.user, session);
+        }
       }
     });
   },
 
-  completeOnboarding: async (username: string) => {
-    const user = get().user;
+  setSessionAndProfile: (user, session, profile) => {
+    saveActiveSessionLocally(user, session);
+    set({ user, session, profile });
+  },
+
+  completeOnboarding: async (username: string, customUser?: User | null) => {
+    const user = customUser || get().user;
     if (!user) {
       throw new Error('You must be signed in to choose a username.');
     }
@@ -124,7 +148,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loading: true });
     try {
       const profile = await createOrUpdateGoogleProfile(user, username);
-      set({ profile });
+      set({ user, profile });
       saveActiveSessionLocally(user, get().session);
       return profile;
     } finally {
@@ -178,12 +202,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return get().signInEmail(email, password);
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogle: async (intent: 'login' | 'signup' = 'login') => {
     set({ loading: true });
     try {
-      const redirectUrl = typeof window !== 'undefined' && window.location?.origin
-        ? `${window.location.origin}/auth/callback`
-        : 'https://cineorder.vercel.app/auth/callback';
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.setItem('cineorder_auth_intent', intent);
+      }
+
+      const origin = typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'https://cineorder.vercel.app';
+      const redirectUrl = `${origin}/auth/callback?intent=${intent}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -203,6 +232,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.removeItem('cineorder_auth_intent');
+      }
       await supabase.auth.signOut();
     } catch {
       // Ignore offline error
@@ -242,29 +274,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchProfile: async (userId) => {
-    try {
-      const { data, error } = await withTimeout(
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single(),
-        600
-      );
-      if (!error && data) {
-        saveLocalProfile(data as Profile);
-        set({ profile: data as Profile });
-        return;
-      }
-    } catch (error) {
-      console.warn('Fetch profile notice:', error);
+    const profile = await checkProfileExists(userId);
+    if (profile) {
+      set({ profile });
+      return profile;
     }
-
-    // Fallback to local profile cache
-    const local = getLocalProfile(userId);
-    if (local) {
-      set({ profile: local });
-    }
+    return null;
   },
 }));
 
