@@ -10,7 +10,6 @@ import { UpcomingCard } from '@/components/ui/UpcomingCard';
 import { ContinuePreparationWidget } from '@/components/home/ContinuePreparationWidget';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { useUpcomingReleases } from '@/hooks/useUpcomingReleases';
-import { useRecommendedMovies, type RecommendedMovieItem } from '@/hooks/useRecommendedMovies';
 import { getUpcomingTitles } from '@/lib/upcomingUtils';
 import { getPopularFranchises, franchises, allContent } from '@/data/franchises';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -137,13 +136,10 @@ export default function HomePage() {
       {/* ─── 2. Continue Preparation ────────────────────────────── */}
       <ContinuePreparationWidget />
 
-      {/* ─── 3. Recommended Movies ──────────────────────────────── */}
-      <RecommendedMoviesSection />
-
-      {/* ─── 4. Upcoming Releases ───────────────────────────────── */}
+      {/* ─── 3. Upcoming Releases ───────────────────────────────── */}
       <UpcomingHomeSection />
 
-      {/* ─── 5. Featured Franchises ─────────────────────────────── */}
+      {/* ─── 4. Featured Franchises ─────────────────────────────── */}
       <FranchiseSection
         title="Featured Franchises"
         icon={<Star className="w-5 h-5 text-yellow-400" />}
@@ -151,120 +147,12 @@ export default function HomePage() {
         onFranchiseClick={(f) => navigate(`/franchise/${f.slug}`)}
       />
 
-      {/* ─── 6. Statistics ──────────────────────────────────────── */}
+      {/* ─── 5. Statistics ──────────────────────────────────────── */}
       <StatsSection />
 
-      {/* ─── 7. Dynamic Personalized CTA Section ───────────────── */}
+      {/* ─── 6. Dynamic Personalized CTA Section ───────────────── */}
       <DynamicCTASection />
     </>
-  );
-}
-
-// ─── Recommended Movies Section ─────────────────────────────
-
-function RecommendedMoviesSection() {
-  const navigate = useNavigate();
-  const { movies, loading, error, refetch } = useRecommendedMovies();
-
-  const handleMovieClick = (movie: RecommendedMovieItem) => {
-    navigate(`/movie/${movie.id}`);
-  };
-
-  return (
-    <section className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8">
-      <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-            <h2 className="text-xl sm:text-2xl font-bold text-white truncate">Recommended For You</h2>
-            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-              Popular & Trending
-            </span>
-          </div>
-          <p className="text-xs text-muted truncate sm:whitespace-normal">
-            Fan favorites and top-rated entry points across our cinematic universes.
-          </p>
-        </div>
-
-        <button
-          onClick={() => navigate('/search?type=movies')}
-          className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-primary hover:text-primary-hover transition-colors flex-shrink-0 cursor-pointer"
-        >
-          View All <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {loading && movies.length === 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <FranchiseCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : error && movies.length === 0 ? (
-        <div className="p-8 rounded-2xl glass-dark border border-white/10 text-center space-y-3">
-          <p className="text-sm font-medium text-white">{error}</p>
-          <button
-            onClick={refetch}
-            className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Try Again
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
-          {movies.slice(0, 12).map((movie, i) => (
-            <motion.div
-              key={`${movie.id}-${i}`}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <Card
-                onClick={() => handleMovieClick(movie)}
-                glow
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-[2/3] overflow-hidden">
-                  <SafeImage
-                    src={movie.poster_url}
-                    alt={movie.title}
-                    fallbackSrc="/placeholder-poster.svg"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-
-                  {/* Rating badge */}
-                  {movie.rating !== undefined && movie.rating > 0 && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/10 text-xs text-white">
-                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                      <span className="font-semibold">{movie.rating.toFixed(1)}</span>
-                    </div>
-                  )}
-
-                  {/* Info */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
-                    <h3 className="text-xs sm:text-sm font-bold line-clamp-2 leading-tight text-white mb-1">
-                      {movie.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-light">
-                      {movie.release_date && !isNaN(new Date(movie.release_date).getFullYear()) && (
-                        <span>{new Date(movie.release_date).getFullYear()}</span>
-                      )}
-                      {movie.franchise_name && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate text-primary/90 font-medium">{movie.franchise_name}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
 
